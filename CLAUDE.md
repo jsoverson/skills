@@ -62,13 +62,15 @@ examples/
   cursor-plugins/              # Cursor plugin examples and schemas
 ```
 
-## Repo Assessment Skill (Active Development)
+## Repo Assessment Skill
 
-The skill being developed assesses repositories for automated auditing suitability. Key criteria from `requirements/repo-assessment.md`:
+The completed skill is at `skills/repo-assessment/SKILL.md`.
 
-- Does the repo have comprehensive automated tests (unit, integration, benchmarks)?
-- Does it have static analysis and security checks?
-- Does it track coverage, benchmark results, and static analysis over time?
-- Does it have clear documentation on how to run all checks?
+Install for personal use:
+```bash
+cp -r skills/repo-assessment ~/.claude/skills/
+```
 
-Relevant precedent skills to study: `requesting-code-review`, `receiving-code-review`, `verification-before-completion`, `writing-plans` (all in `examples/claude-superpowers/skills/`).
+The skill was developed following the RED-GREEN-REFACTOR methodology documented in `skills/repo-assessment/test-scenarios.md`. Baseline testing (RED phase), skill writing (GREEN phase), and gap closing (REFACTOR phase) are all documented there.
+
+The skill assesses nine dimensions: unit tests, integration tests, benchmarks, static analysis, type checking, security scanning, CI/CD pipeline, coverage tracking, and benchmark tracking. It includes ecosystem-specific commands for Node.js, Python, Go, and Rust.
