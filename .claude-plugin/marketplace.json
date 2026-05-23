@@ -1,0 +1,30 @@
+{
+  "name": "jsoverson-claude-skills",
+  "owner": {
+    "name": "jsoverson-claude-skills",
+    "email": "jsoverson@gmail.com"
+  },
+  "metadata": {
+    "description": "Tools and skills for software project assessment, auditing, and review.",
+    "version": "0.1.20",
+    "repository": "https://github.com/jsoverson/claude-skills"
+  },
+  "plugins": [
+    {
+      "name": "repo-assessment",
+      "source": "./skills/repo-assessment",
+      "strict": true,
+      "description": "Assess a repository for its maintainability and ability to scale with generated code",
+      "version": "0.1.0",
+      "category": "tools",
+      "keywords": [
+        "git",
+        "repo",
+        "maintainability",
+        "analysis",
+        "audit",
+        "project"
+      ]
+    }
+  ]
+}
