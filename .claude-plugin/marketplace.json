@@ -12,7 +12,7 @@
   "plugins": [
     {
       "name": "repo-assessment",
-      "source": "./skills/repo-assessment",
+      "source": "./plugins/repo-hardening",
       "strict": true,
       "description": "Assess a repository for its maintainability and ability to scale with generated code",
       "version": "0.1.0",
