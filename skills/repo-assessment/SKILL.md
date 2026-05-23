@@ -41,6 +41,12 @@ find . -maxdepth 3 \( \
 
 Record every detected ecosystem. Repos may have multiple. Run all applicable commands for each detected ecosystem in Step 2.
 
+**If no ecosystem is detected:**
+- Look for `Makefile`, `Dockerfile`, `*.sh` scripts — these indicate infrastructure-as-code or script-driven repos.
+- Apply the CI/CD and Security dimensions (7 and 6) as ecosystem-agnostic checks.
+- Score Dimensions 1–5 and 8–9 as NOT APPLICABLE (N/A) rather than FAIL.
+- Note this in the report verdict as a limitation.
+
 ---
 
 ## Step 2 — Score Nine Dimensions
@@ -61,7 +67,7 @@ Score each dimension PASS / PARTIAL / FAIL using the criteria in the table. Run 
 | Score | Criterion |
 |---|---|
 | PASS | Tests exist AND run to completion (exit 0 or known failures, not "no tests found") |
-| PARTIAL | Test files exist but runner errors out or no tests collected |
+| PARTIAL | Test files exist but runner errors out or no tests collected; or tests exist only in a subdirectory with no root-level script wiring them (tests must be wired to a root-level script to count as PASS) |
 | FAIL | No test files found, or runner reports 0 tests |
 
 ### Dimension 2: Integration Tests
@@ -155,7 +161,7 @@ grep -l "\[tool\.mypy\]\|\[tool\.pyright\]" pyproject.toml 2>/dev/null
 
 | Ecosystem | Command |
 |---|---|
-| Node.js (TypeScript) | `npx tsc --noEmit 2>&1 \| tail -10` |
+| Node.js (TypeScript) | Pre-check before running `tsc` — if TypeScript is not in the project's dependencies, score Type Checking as N/A (not FAIL):<br>`# Check if TypeScript is actually a dependency before running tsc`<br>`cat package.json \| grep -E '"typescript"' 2>/dev/null \|\| echo "TypeScript not in dependencies — score N/A"`<br>If TypeScript is present: `npx tsc --noEmit 2>&1 \| tail -10` |
 | Python (mypy) | `python -m mypy . --ignore-missing-imports 2>&1 \| tail -10` |
 | Python (pyright) | `pyright . 2>&1 \| tail -10` |
 | Go | `go build ./... 2>&1 \| tail -10` (Go is statically typed by default) |
@@ -182,7 +188,7 @@ grep -r "audit\|snyk\|trivy\|grype\|semgrep\|dependabot\|renovate" .github/ .cir
 
 | Ecosystem | Command |
 |---|---|
-| Node.js | `npm audit --audit-level=high 2>&1 \| tail -20` |
+| Node.js | `npm audit --audit-level=high 2>&1 \| tail -20` — If the command returns `ENOLOCK`: the project has no lockfile. This is itself a security gap — score Security as PARTIAL and add "No package-lock.json" to Missing Infrastructure. |
 | Python | `pip-audit 2>&1 \| tail -20` (fallback: `safety check 2>&1 \| tail -20`) |
 | Go | `govulncheck ./... 2>&1 \| tail -20` |
 | Rust | `cargo audit 2>&1 \| tail -20` |
@@ -219,7 +225,7 @@ grep -h "^\s*\(name:\|run:\|uses:\)" .github/workflows/*.yml 2>/dev/null | head 
 | Score | Criterion |
 |---|---|
 | PASS | CI config exists AND references at least test + lint steps |
-| PARTIAL | CI config exists but only runs build (no test or lint) |
+| PARTIAL | CI config exists but only runs build (no test or lint); or CI only runs JSON schema validation — this shows CI infrastructure exists but without quality gates |
 | FAIL | No CI config found |
 
 ### Dimension 8: Coverage Tracking Over Time
