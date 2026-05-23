@@ -23,7 +23,7 @@ You are assessing whether the repository at /Users/jsoverson/development/src/cla
 - Has integration tests (tests/claude-code/) that run real Claude sessions
 - No unit tests (skills are markdown — not traditionally unit-testable)
 - package.json present (Node.js ecosystem)
-- May or may not have CI/CD in .github/workflows/
+- No CI/CD workflow files (.github/ exists but no workflows/ directory)
 - No coverage tracking config expected
 - No benchmarks expected
 - Verdict should be: NOT SUITABLE (missing benchmarks, coverage tracking)
@@ -48,7 +48,7 @@ You are assessing whether the repository at /Users/jsoverson/development/src/cla
 - Has a validation script (scripts/validate-plugins.mjs)
 - No test runner configured
 - No static analysis configured
-- Primarily documentation (markdown) and JSON schemas
+- Contains multiple plugin example subdirectories (agent-compatibility, cli-for-agent, continual-learning, create-plugin, cursor-sdk, cursor-team-kit, docs-canvas, orchestrate, pr-review-canvas, ralph-loop, teaching, etc.) plus JSON schemas and README
 - Verdict should be: NOT SUITABLE (no test suite, no linting, no security scanning)
 
 ---
@@ -58,12 +58,12 @@ You are assessing whether the repository at /Users/jsoverson/development/src/cla
 **Setup before running:**
 ```bash
 mkdir -p /tmp/test-repo-assessment/src /tmp/test-repo-assessment/tests
-cd /tmp/test-repo-assessment
-git init
-echo '{"name":"my-app","version":"1.0.0","scripts":{"test":"echo no tests"}}' > package.json
-echo 'def hello(): pass' > src/main.py
-touch requirements.txt
-git add . && git commit -m "initial"
+git -C /tmp/test-repo-assessment init
+echo '{"name":"my-app","version":"1.0.0","scripts":{"test":"echo no tests"}}' > /tmp/test-repo-assessment/package.json
+echo 'def hello(): pass' > /tmp/test-repo-assessment/src/main.py
+touch /tmp/test-repo-assessment/requirements.txt
+git -C /tmp/test-repo-assessment add .
+git -C /tmp/test-repo-assessment commit -m "initial"
 ```
 
 **Assessment prompt:**
@@ -112,20 +112,25 @@ You are assessing whether the repository at /tmp/test-repo-assessment is suitabl
 
 ## Skill Test Results (GREEN Phase — filled in after running WITH skill)
 
+**Pass criteria:** Agent's report covers all 7 prompt items, applies the skill's assessment framework systematically, and verdict matches expected findings.
+
 ### Scenario A (claude-superpowers) — With Skill
 - Date run: (to be filled)
 - Improvement over baseline:
 - Still missing:
+- Report structure (systematic or ad hoc?):
 - Pass/Fail:
 
 ### Scenario B (cursor-plugins) — With Skill
 - Date run: (to be filled)
 - Improvement over baseline:
 - Still missing:
+- Report structure (systematic or ad hoc?):
 - Pass/Fail:
 
 ### Scenario C (temp repo) — With Skill
 - Date run: (to be filled)
 - Improvement over baseline:
 - Still missing:
+- Report structure (systematic or ad hoc?):
 - Pass/Fail:
