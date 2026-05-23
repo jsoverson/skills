@@ -127,18 +127,18 @@ The skill must provide: (1) explicit run commands per ecosystem, (2) coverage/be
 **Pass criteria:** Agent's report covers all 7 prompt items, applies the skill's assessment framework systematically, and verdict matches expected findings.
 
 ### Scenario A (claude-superpowers) — With Skill
-- Date run: (to be filled)
-- Improvement over baseline:
-- Still missing:
-- Report structure (systematic or ad hoc?):
-- Pass/Fail:
+- Date run: 2026-05-23
+- Improvement over baseline: Skill directed `npm audit`, `npx eslint .`, and `npx tsc --noEmit` — none of which the RED baseline ran. Confirmed ENOLOCK (missing lockfile) as a security signal, confirmed no ESLint config via migration error, confirmed no TypeScript toolchain. All 9 dimensions scored with explicit evidence from commands. Standardized SUITABLE criteria applied unambiguously.
+- Still missing: Skill does not anticipate the `npx tsc` stub-package false output when TypeScript is absent; ENOLOCK is not called out as distinct from "command not found"; no guidance on tests in subdirectories only (PARTIAL vs FAIL boundary unclear).
+- Report structure: Systematic — 9-row scored table, ordered Missing Infrastructure section, explicit SUITABLE/NOT SUITABLE verdict block.
+- Pass/Fail: PASS
 
 ### Scenario B (cursor-plugins) — With Skill
-- Date run: (to be filled)
-- Improvement over baseline:
-- Still missing:
-- Report structure (systematic or ad hoc?):
-- Pass/Fail:
+- Date run: 2026-05-23
+- Improvement over baseline: Ecosystem detection explicitly confirmed zero ecosystem files — forced the assessor to handle a "no ecosystem" case cleanly. Security grep confirmed no Dependabot. Coverage and benchmark tracking finds confirmed absence of config files explicitly. Consistent report structure identical to Scenario A output.
+- Still missing: Skill has no "no ecosystem detected" path — assessor must apply judgment when Step 1 returns empty. No guidance for JSON/schema-only repos that have no executable code. CI PARTIAL vs PASS line could be clearer for custom validation scripts.
+- Report structure: Systematic — identical 9-row table format as Scenario A, ordered gaps, explicit verdict block.
+- Pass/Fail: PASS
 
 ### Scenario C (temp repo) — With Skill
 - Date run: (to be filled)
