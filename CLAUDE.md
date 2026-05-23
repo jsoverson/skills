@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repository contains Jarrod's personal Claude plugin development workspace: plans, specs, requirements, and example plugins. The primary example is the Superpowers plugin (`examples/claude-superpowers/`), which serves as a reference implementation and source of reusable skills.
+This repository contains Jarrod's personal Claude plugin development workspace: plans, specs, requirements, example plugins, and skills under development. The primary example is the Superpowers plugin (`examples/claude-superpowers/`), which serves as a reference implementation and source of reusable skills.
 
-The active work-in-progress is a **repo-assessment** skill, specified in `requirements/repo-assessment.md`.
+New skills being developed for personal use live in `skills/`. Completed skills are symlinked into `~/.claude/skills/` for live testing.
 
 ## Engineering Philosophy
 
@@ -21,7 +21,7 @@ Core philosophy is documented in `docs/engineering-philosophies.md`. The key pri
 
 ## Skill Development
 
-Skills live in `examples/claude-superpowers/skills/<skill-name>/SKILL.md`. Each skill requires:
+Skills being developed here live in `skills/<skill-name>/SKILL.md`. Reference/upstream skills live in `examples/claude-superpowers/skills/<skill-name>/SKILL.md`. Each skill requires:
 - YAML frontmatter with `name` (letters/numbers/hyphens only) and `description` (starts with "Use when...", triggering conditions only — never summarize the skill's workflow in the description)
 - Written in third person (injected into system prompts)
 - Tested via RED-GREEN-REFACTOR cycle using the `superpowers:writing-skills` skill
@@ -50,9 +50,12 @@ python3 examples/claude-superpowers/tests/claude-code/analyze-token-usage.py ~/.
 ## Repo Structure
 
 ```
-docs/                          # Engineering philosophies and principles
+docs/
+  engineering-philosophies.md  # Core engineering principles
+  plans/                       # Implementation plans (YYYY-MM-DD-<feature>.md)
 requirements/                  # Specs for skills under development
-  repo-assessment.md           # Active: spec for the repo-assessment skill
+skills/                        # Skills developed in this repo (symlinked to ~/.claude/skills/)
+  repo-assessment/SKILL.md     # Completed: repo auditing suitability assessment
 examples/
   claude-superpowers/          # Superpowers plugin (reference implementation)
     skills/                    # All skills (SKILL.md per skill)
@@ -66,9 +69,9 @@ examples/
 
 The completed skill is at `skills/repo-assessment/SKILL.md`.
 
-Install for personal use:
+For live development iteration, symlink instead of copying:
 ```bash
-cp -r skills/repo-assessment ~/.claude/skills/
+ln -s $(pwd)/skills/repo-assessment ~/.claude/skills/repo-assessment
 ```
 
 The skill was developed following the RED-GREEN-REFACTOR methodology documented in `skills/repo-assessment/test-scenarios.md`. Baseline testing (RED phase), skill writing (GREEN phase), and gap closing (REFACTOR phase) are all documented there.

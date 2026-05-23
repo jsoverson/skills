@@ -230,16 +230,16 @@ grep -h "^\s*\(name:\|run:\|uses:\)" .github/workflows/*.yml 2>/dev/null | head 
 
 ### Dimension 8: Coverage Tracking Over Time
 
-**Look for:** `.codecov.yml`, `codecov.yml`, `.coveragerc`, `coverage.xml`, `lcov.info`, Coveralls config, SonarCloud config, CI steps that upload coverage
+**Look for:** `.coveragerc`, `coverage.xml`, `lcov.info`, git metadata branch (`etc/coverage`), CI steps that store coverage output
 
 ```bash
 find . -maxdepth 4 \( \
-  -name ".codecov.yml" -o -name "codecov.yml" \
-  -o -name ".coveralls.yml" -o -name ".coveragerc" \
-  -o -name "sonar-project.properties" \
+  -name ".coveragerc" -o -name "coverage.xml" -o -name "lcov.info" \
 \) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-# Check CI for coverage upload:
-grep -r "codecov\|coveralls\|sonar\|lcov\|coverage upload\|coverage report" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
+# Check for git metadata branch:
+git branch -a 2>/dev/null | grep -E "etc/coverage|\.metadata" | head -5
+# Check CI for coverage persistence:
+grep -r "etc/coverage\|coverage.*artifact\|upload.*coverage\|coverage.*store\|lcov\|coverage report" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
 ```
 
 | Ecosystem | Command |
@@ -251,26 +251,40 @@ grep -r "codecov\|coveralls\|sonar\|lcov\|coverage upload\|coverage report" .git
 
 | Score | Criterion |
 |---|---|
-| PASS | Coverage is measured AND results are uploaded to a tracking service (Codecov, Coveralls, SonarCloud, etc.) in CI |
-| PARTIAL | Coverage is measured locally or in CI but not uploaded or trended |
+| PASS | Coverage is measured AND results are stored persistently across runs: git metadata branch (`etc/coverage`), CI artifact with a retention policy, or equivalent local store |
+| PARTIAL | Coverage is measured locally or in CI but not stored or trended across runs |
 | FAIL | No coverage measurement configured |
+
+> **Git Metadata Branch Pattern** — store historical output in a dedicated branch that never merges into main. Works for any repo, no external service required:
+> ```bash
+> # Run once to create the branch (orphan = no shared history with main):
+> git checkout --orphan etc/coverage && git rm -rf . && git commit --allow-empty -m "init" && git checkout -
+> 
+> # Add to CI after generating coverage output:
+> git worktree add /tmp/cov-meta etc/coverage
+> cp coverage.out "/tmp/cov-meta/$(date +%Y-%m-%d)-$(git rev-parse --short HEAD).out"
+> git -C /tmp/cov-meta add -A
+> git -C /tmp/cov-meta commit -m "coverage: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+> git push origin etc/coverage
+> git worktree remove /tmp/cov-meta
+> ```
+> Use the same pattern with `etc/benchmarks` for Dimension 9. History is queryable with `git log etc/coverage`.
 
 ### Dimension 9: Benchmark Tracking Over Time
 
-**Look for:** `bencher.yml`, `.bencher/`, Continuous Benchmarking section in CI, `criterion` output stored as artifacts, GitHub Actions benchmark action (`benchmark-action/github-action-benchmark`)
+**Look for:** git metadata branch (`etc/benchmarks`), CI artifact with retention, `criterion` output stored across runs
 
 ```bash
-find . -maxdepth 4 \( \
-  -name "bencher.yml" -o -name ".bencher.yml" -o -path "*/.bencher/*" \
-\) -not -path "*/.git/*" 2>/dev/null | sort
-# Check CI for benchmark tracking:
-grep -r "bencher\|benchmark-action\|continuous.bench\|gh-pages.*bench\|store.*bench\|bench.*artifact" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
+# Check for git metadata branch:
+git branch -a 2>/dev/null | grep -E "etc/bench|\.metadata" | head -5
+# Check CI for benchmark persistence:
+grep -r "etc/bench\|bench.*artifact\|store.*bench\|bench.*store\|benchmark.*history" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
 ```
 
 | Score | Criterion |
 |---|---|
-| PASS | Benchmarks run in CI AND results are stored or compared across runs (Bencher, GitHub Pages, artifact history, or regression alerts) |
-| PARTIAL | Benchmarks exist and run in CI but results are discarded (no history) |
+| PASS | Benchmarks run in CI AND results are stored across runs: git metadata branch (`etc/benchmarks`), CI artifact with retention policy, or equivalent persistent store |
+| PARTIAL | Benchmarks exist and run in CI but results are discarded after each run (no history, no comparison) |
 | FAIL | No benchmark tracking in CI |
 
 ---
@@ -328,7 +342,26 @@ If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 
 
 ---
 
-## Step 4 — Common Gaps Quick Reference
+## Step 4 — Save the Report
+
+Derive the project name and today's date, then save the completed report to a file.
+
+```bash
+# Derive project name: prefer git remote slug, fall back to directory name
+PROJECT=$(git remote get-url origin 2>/dev/null | sed 's|.*/||; s|\.git$||') 
+[ -z "$PROJECT" ] && PROJECT=$(basename "$(pwd)")
+DATE=$(date +%Y-%m-%d)
+mkdir -p reports/assessment
+REPORT_PATH="reports/assessment/${DATE}-${PROJECT}-analysis.md"
+```
+
+Write the filled report template to `$REPORT_PATH`.
+
+After saving, output: `Report saved to $REPORT_PATH`
+
+---
+
+## Step 5 — Common Gaps Quick Reference
 
 | Gap | Fix Command / Config |
 |---|---|
@@ -347,5 +380,5 @@ If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 
 | No govulncheck in CI | `go install golang.org/x/vuln/cmd/govulncheck@latest` then add to CI |
 | No cargo-audit in CI | `cargo install cargo-audit` then add `cargo audit` to CI |
 | No CI pipeline | Create `.github/workflows/ci.yml` with test + lint jobs |
-| No coverage tracking | Add Codecov: `pip install codecov` or `npm i -D @codecov/webpack-plugin`; add upload step in CI |
-| No benchmark tracking | Add `benchmark-action/github-action-benchmark` to CI workflow |
+| No coverage tracking | Use git metadata branch: create `etc/coverage` orphan branch, commit coverage output after each CI run (see Dimension 8 pattern) |
+| No benchmark tracking | Use git metadata branch: create `etc/benchmarks` orphan branch, commit benchmark output after each CI run (same pattern as Dimension 8) |
