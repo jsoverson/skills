@@ -37,6 +37,8 @@ find . -maxdepth 3 \( \
 | `*.csproj`, `*.sln` | .NET |
 | `Gemfile`, `Gemfile.lock` | Ruby |
 
+> **Note — Ruby and JVM ecosystems:** Detection only. Step 2 commands cover Node.js, Python, Go, and Rust. For Ruby, Java/JVM, .NET, or other ecosystems, apply the same dimensional framework using the ecosystem's standard toolchain (e.g., `mvn test`, `bundle exec rspec`, `dotnet test`).
+
 Record every detected ecosystem. Repos may have multiple. Run all applicable commands for each detected ecosystem in Step 2.
 
 ---
@@ -51,7 +53,7 @@ Score each dimension PASS / PARTIAL / FAIL using the criteria in the table. Run 
 
 | Ecosystem | Command |
 |---|---|
-| Node.js | `npm test -- --passWithNoTests 2>&1 \| tail -20` |
+| Node.js | `npm test 2>&1 \| tail -20` |
 | Python | `python -m pytest --collect-only -q 2>&1 \| tail -20` |
 | Go | `go test ./... -list '.*' 2>&1 \| tail -20` |
 | Rust | `cargo test -- --list 2>&1 \| tail -20` |
@@ -76,7 +78,7 @@ find . -maxdepth 4 \( \
 
 | Ecosystem | Command |
 |---|---|
-| Node.js | `npm run test:integration 2>&1 \| tail -10` (or `test:e2e`) |
+| Node.js | `npm run test:integration 2>&1 \| tail -10` (or `test:e2e`) — Note: if the integration/e2e script doesn't exist, score from `find` results only — a missing script name does not mean FAIL. |
 | Python | `python -m pytest tests/integration/ -q --collect-only 2>&1 \| tail -10` |
 | Go | `go test ./... -tags integration -list '.*' 2>&1 \| tail -10` |
 | Rust | `cargo test --test '*' -- --list 2>&1 \| tail -10` |
@@ -103,7 +105,7 @@ find . -maxdepth 4 \( \
 | Node.js | `npm run bench 2>&1 \| tail -10` (or `benchmark`) |
 | Python | `python -m pytest --co -q -k bench 2>&1 \| tail -10` |
 | Go | `go test ./... -bench=. -benchtime=1x 2>&1 \| tail -20` |
-| Rust | `cargo bench -- --list 2>&1 \| tail -10` |
+| Rust | `cargo bench --no-run 2>&1 \| tail -10` |
 
 | Score | Criterion |
 |---|---|
@@ -134,8 +136,8 @@ find . -maxdepth 3 \( \
 
 | Score | Criterion |
 |---|---|
-| PASS | Linter config exists AND linter runs without "command not found" |
-| PARTIAL | Linter config exists but not in CI, or only default rules with no config file |
+| PASS | Linter config exists AND linter runs without "command not found" (Go: requires `golangci-lint` configured — `go vet` alone is not sufficient for PASS) |
+| PARTIAL | Linter config exists but not in CI, or only default rules with no config file; Go: `go vet` alone (without `golangci-lint`) scores PARTIAL, not PASS |
 | FAIL | No linter config and not referenced in CI |
 
 ### Dimension 5: Type Checking
@@ -279,6 +281,8 @@ Ecosystems detected: [LIST ALL]
 
 ## Quality Infrastructure Summary
 
+Legend: ✓ = PASS  ⚠ = PARTIAL  ✗ = FAIL
+
 | # | Dimension | Status | Evidence | Notes |
 |---|---|---|---|---|
 | 1 | Unit Tests | [✓/✗/⚠] | [file or command output] | [one line] |
@@ -290,8 +294,6 @@ Ecosystems detected: [LIST ALL]
 | 7 | CI/CD Pipeline | [✓/✗/⚠] | [file or command output] | [one line] |
 | 8 | Coverage Tracking | [✓/✗/⚠] | [file or command output] | [one line] |
 | 9 | Benchmark Tracking | [✓/✗/⚠] | [file or command output] | [one line] |
-
-Legend: ✓ = PASS  ⚠ = PARTIAL  ✗ = FAIL
 
 ## Missing Infrastructure
 
@@ -313,9 +315,9 @@ Criteria for SUITABLE (ALL must be true):
 - Dimension 4 (Static Analysis): PASS
 - Dimension 6 (Security Scanning): PASS or PARTIAL
 - Dimension 7 (CI/CD Pipeline): PASS
-- No more than 2 dimensions scored FAIL
+- No more than 1 dimension scored FAIL
 
-If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 7, or more than 2 total FAILs).
+If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 7, or more than 1 total FAIL).
 ```
 
 ---
@@ -329,7 +331,7 @@ If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 
 | No Go tests | Create `*_test.go` file with `func TestXxx(t *testing.T)` |
 | No Rust tests | Add `#[cfg(test)] mod tests { ... }` to `src/lib.rs` |
 | No ESLint config | `npm init @eslint/config@latest` |
-| No Python linter | `pip install ruff && ruff check --select ALL . --fix` |
+| No Python linter | `pip install ruff && echo -e '[tool.ruff]\nselect = ["E", "F"]' >> pyproject.toml` |
 | No golangci-lint | `brew install golangci-lint && golangci-lint run` |
 | No Clippy config | `cargo clippy -- -D warnings` (add to CI) |
 | No TypeScript types | `npm install --save-dev typescript && npx tsc --init` |
