@@ -88,18 +88,30 @@ You are assessing whether the repository at /tmp/test-repo-assessment is suitabl
 ## Baseline Results (RED Phase — filled in after running WITHOUT skill)
 
 ### Scenario A (claude-superpowers) — Baseline
-- Date run: (to be filled)
-- What agent checked spontaneously:
-- What agent missed:
-- Report structure (systematic or ad hoc?):
-- Key gaps:
+
+- Date run: 2026-05-23
+- What agent checked spontaneously: All 7 dimensions; file tree, test files (JS, shell, .mjs), .github/ for CI, package.json, linting config filenames, YAML files. Identified 5 deterministic test suites and 2 LLM-dependent test suites.
+- What agent missed: Did not run npm audit or check for vulnerabilities. Did not check specific coverage config files (.nycrc, codecov.yml). Did not check for benchmark tracking integrations (bencher.dev, github-action-benchmark). Did not verify tests actually pass.
+- Report structure: Systematic — covered all 7 requested dimensions in order, gave priority-ordered missing infrastructure list.
+- Key gaps: No explicit commands run (knowledge-based), no standardized pass/fail criteria per dimension, coverage/benchmark config files not checked.
 
 ### Scenario B (cursor-plugins) — Baseline
-- Date run: (to be filled)
-- What agent checked spontaneously:
-- What agent missed:
-- Report structure (systematic or ad hoc?):
-- Key gaps:
+
+- Date run: 2026-05-23
+- What agent checked spontaneously: All 7 dimensions; full file tree, .github/workflows/, CI workflow file in detail, orchestrate/scripts subdirectory (found tests), biome.json, tsconfig.json.
+- What agent missed: Did not check for Dependabot config. Did not check coverage config files. Did not run any commands to verify what tools are installed. Did not assess depth of test coverage beyond file inspection.
+- Report structure: Systematic — covered all 7 dimensions with clear section headers. Prose-heavy but organized.
+- Key gaps: Discovered the repo is more complex than expected (has a real test suite in orchestrate/scripts). Inconsistent report format compared to Scenario A output. No standardized pass/fail criteria.
+
+**Pattern observed across both baselines:**
+1. Agents naturally cover all major dimensions when explicitly prompted for them
+2. Agents do NOT run verification commands (npm audit, pip-audit, etc.) — they infer from file presence
+3. Agents do NOT check specific coverage/benchmark tracking config files
+4. Report format varies — narrative vs structured depending on agent style
+5. No consistent SUITABLE/NOT SUITABLE criteria used; agents infer from gestalt assessment
+6. Agents identify the primary ecosystem well but may miss multi-ecosystem signals
+
+The skill must provide: (1) explicit run commands per ecosystem, (2) coverage/benchmark config file checklists, (3) a standardized report template, and (4) explicit SUITABLE criteria.
 
 ### Scenario C (temp repo) — Baseline
 - Date run: (to be filled)
