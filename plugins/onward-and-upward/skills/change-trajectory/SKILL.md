@@ -149,14 +149,14 @@ Read the full workflow diff — not just grep output. A multi-line CI step that 
 
 **What matters:** Does this change worsen linter compliance? Are suppressions being added to silence violations rather than fix them?
 
-Run the linter for the detected ecosystem at the tip ref, then compare against the base. If the linter was already producing violations before this change, do not penalize it for pre-existing debt — assess only the delta. Check the diff for inline suppression comments (`eslint-disable`, `# noqa`, `// nolint`, `#[allow(clippy`, `# type: ignore`). Net new suppressions indicate the author knew about violations and chose to silence them rather than fix them.
+Check the diff for inline suppression comments (`eslint-disable`, `# noqa`, `// nolint`, `#[allow(clippy`, `# type: ignore`). Net new suppressions indicate the author knew about violations and chose to silence them rather than fix them.
 
-| Score     | Criterion                                                                |
-| --------- | ------------------------------------------------------------------------ |
-| IMPROVING | Net reduction in lint violations; suppressions removed (removed > added) |
-| NEUTRAL   | No change in lint violations; new suppressions are valid and justified;  |
-| DEGRADING | New inline suppressions added without justification;                     |
-| CRITICAL  | Linting config deleted or rules critically relaxed                       |
+| Score     | Criterion                                                                                             |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| IMPROVING | Net reduction in lint violations; suppressions removed (removed > added)                              |
+| NEUTRAL   | no new suppressions, new suppressions are valid and justified;                                        |
+| DEGRADING | New inline suppressions added without justification; source files added outside of lint configuration |
+| CRITICAL  | Linting config deleted or rules critically relaxed                                                    |
 
 ### Signal 5: Type Safety Trajectory
 
