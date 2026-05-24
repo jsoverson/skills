@@ -168,7 +168,7 @@ If TypeScript or mypy is not configured, score NEUTRAL and note the limitation.
 
 **What matters:** Do new dependencies introduce known vulnerabilities? Is the attack surface growing without justification?
 
-If dependency manifests changed, read what was added or removed. Run a security audit for the affected ecosystem. If no audit tool is available, assess based on manifest inspection alone and note the limitation.
+If dependency manifests changed, read what was added or removed. Assume any configured security checks have already run and passed. Look for any reason new dependencies might not have been audited or removal of audit configuration.
 
 | Score     | Criterion                                                                                                                    |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------- |
