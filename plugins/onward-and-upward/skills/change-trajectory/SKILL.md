@@ -5,7 +5,7 @@ description: Use when evaluating whether a code change (PR, branch diff, or comm
 
 # Change Trajectory Assessment
 
-Evaluate whether a proposed change improves or degrades the repository's quality trajectory. Produces a merge recommendation (RECOMMEND MERGE / MERGE WITH CONDITIONS / HOLD / BLOCK) based on seven quality signals.
+Evaluate whether a proposed change improves or degrades the repository's quality trajectory. Produces a merge recommendation (RECOMMEND MERGE / MERGE WITH CONDITIONS / HOLD / BLOCK) based on eight quality signals.
 
 **Announce at start:** "I'm using the change-trajectory skill to assess this change."
 
@@ -20,14 +20,14 @@ digraph change_trajectory {
     "Identify changeset" [shape=box];
     "Detect ecosystems" [shape=box];
     "Categorize changed files" [shape=box];
-    "Score 7 signals" [shape=box];
+    "Score 8 signals" [shape=box];
     "Compute verdict" [shape=diamond];
     "Fill & save report" [shape=doublecircle];
 
     "Identify changeset" -> "Detect ecosystems";
     "Detect ecosystems" -> "Categorize changed files";
-    "Categorize changed files" -> "Score 7 signals";
-    "Score 7 signals" -> "Compute verdict";
+    "Categorize changed files" -> "Score 8 signals";
+    "Score 8 signals" -> "Compute verdict";
     "Compute verdict" -> "Fill & save report";
 }
 ```
@@ -89,7 +89,7 @@ Record counts for each category. These inform proportionality judgments in Signa
 
 ---
 
-## Step 4 — Score Seven Quality Signals
+## Step 4 — Score Eight Quality Signals
 
 Score each signal: **IMPROVING** (↑) / **NEUTRAL** (→) / **DEGRADING** (↓) / **CRITICAL** (✗)
 
@@ -100,32 +100,34 @@ Score each signal: **IMPROVING** (↑) / **NEUTRAL** (→) / **DEGRADING** (↓)
 
 ### Signal 1: Test Suite Health
 
-**What matters:** Do all tests pass after this change? Did the change add new tests for new logic?
+**What matters:** Do all tests pass after this change? Did the change add new tests for new logic? Does the new logic appear correct?
 
-Run the test suite and read the output — don't just check the exit code. Look at what tests exist, what they cover, and whether new tests were added alongside new logic. If no test suite exists but new branching logic was added, that's a quality gap.
+Run the test suite at the tip ref and read the output — don't just check the exit code. Then compare against base: if tests were already failing before this change, do not penalize it for pre-existing failures. Assess only the delta this change introduces.
+
+Also read the new logic in the diff for obvious correctness errors: reversed conditions, off-by-one bounds, null dereferences on unchecked values, unhandled error returns, or logic inversions. Tests don't catch what they don't test — a passing suite doesn't mean correct logic.
 
 | Score | Criterion |
 |---|---|
-| IMPROVING | New tests were added AND all tests pass |
-| NEUTRAL | No new tests, but all existing tests still pass |
-| DEGRADING | Tests modified in ways that reduce assertion strength (assertions commented out, failure cases removed) but suite still passes |
-| CRITICAL | Any tests fail after this change; OR test files deleted with no equivalent replacement |
+| IMPROVING | New tests were added AND all tests pass; OR obvious pre-existing failures were fixed |
+| NEUTRAL | No new tests, but all tests that passed at the base still pass; no obvious logic errors in new code |
+| DEGRADING | Tests modified in ways that reduce assertion strength (assertions commented out, failure cases removed) but suite still passes; OR new logic contains suspicious but non-obvious errors |
+| CRITICAL | Tests that passed at the base now fail after this change; OR test files deleted with no equivalent replacement; OR new logic contains an obvious, unambiguous error (reversed condition, dead branch that makes the feature inoperable) |
 
 If no test suite exists: CRITICAL if new source files with branching logic were added, NEUTRAL if only config/docs/declarations changed.
 
 ### Signal 2: Coverage Alignment
 
-**What matters:** Does new logic have corresponding tests? Are new code paths exercised?
+**What matters:** Does new logic introduced by this change have corresponding tests? Are new code paths exercised?
 
-Read the diff. Identify what new functions, methods, or conditional branches were added. Ask: is there a test that would fail if this logic were wrong? Line counts are a calibration proxy — use them to start, then apply judgment.
+Read the diff. Identify what new functions, methods, or conditional branches were added by this change. Ask: is there a test that would fail if this logic were wrong? Line counts are a calibration proxy — use them to start, then apply judgment.
 
-Constants, type declarations, and configuration files do not need tests. Functions with conditional logic do.
+Constants, type declarations, and configuration files do not need tests. Functions with conditional logic do. Do not penalize the change for pre-existing uncovered code — assess only the coverage ratio of what this change adds.
 
 | Score | Criterion |
 |---|---|
-| IMPROVING | Test lines added ≥ source lines added, OR new tests demonstrably cover new logic |
+| IMPROVING | Test lines added ≥ source lines added, OR new tests demonstrably cover new logic introduced by this change |
 | NEUTRAL | No new source code; OR new source is only constants/interfaces/type declarations with no branching logic; OR diff shows only parameter name changes, docstrings, or comments with no new control flow |
-| DEGRADING | New functions/methods with branching logic added, but no corresponding tests |
+| DEGRADING | New functions/methods with branching logic added by this change, but no corresponding tests |
 | CRITICAL | Test files deleted with no replacement; test assertions removed without equivalent coverage elsewhere |
 
 ### Signal 3: Quality Infrastructure Integrity
@@ -143,9 +145,9 @@ Read the full workflow diff — not just grep output. A multi-line CI step that 
 
 ### Signal 4: Static Analysis Compliance
 
-**What matters:** Does the change pass the linter? Are suppressions being added to silence violations rather than fix them?
+**What matters:** Does this change worsen linter compliance? Are suppressions being added to silence violations rather than fix them?
 
-Run the linter for the detected ecosystem. Check the diff for inline suppression comments (`eslint-disable`, `# noqa`, `// nolint`, `#[allow(clippy`, `# type: ignore`). Net new suppressions indicate the author knew about violations and chose to silence them rather than fix them.
+Run the linter for the detected ecosystem at the tip ref, then compare against the base. If the linter was already producing violations before this change, do not penalize it for pre-existing debt — assess only the delta. Check the diff for inline suppression comments (`eslint-disable`, `# noqa`, `// nolint`, `#[allow(clippy`, `# type: ignore`). Net new suppressions indicate the author knew about violations and chose to silence them rather than fix them.
 
 | Score | Criterion |
 |---|---|
@@ -195,14 +197,40 @@ Scan the diff for hardcoded credentials, dangerous execution patterns (`eval`, `
 | DEGRADING | Security config suppressions added (`.trivyignore` entries); security-sensitive code paths modified without clear rationale in PR description |
 | CRITICAL | Credentials or secrets visible in the diff; known dangerous patterns added (unsanitized `eval`, `shell=True` on external input, auth bypass flags); security scanner removed from CI |
 
+### Signal 8: Intent Alignment
+
+**What matters:** Does the code actually match what the PR claims to do? A change that does undisclosed work — or fails to do what it claims — is a quality failure independent of test coverage or linting.
+
+Read the PR title and description (if available). Identify the stated purpose: what problem is being solved, what behavior is being changed, what the author says is in scope. Then read the diff and ask two questions:
+
+1. Does the diff accomplish what the description claims?
+2. Does the diff contain work that falls outside the stated scope?
+
+A PR that claims to "fix a display bug" but modifies auth middleware is doing undisclosed work. A PR that claims to "add retry logic" but the diff contains no retry mechanism is failing to deliver. Both are alignment failures.
+
+If no PR description is available, score NEUTRAL and note the absence.
+
+| Score | Criterion |
+|---|---|
+| IMPROVING | Diff precisely matches the stated purpose; no out-of-scope changes; implementation is complete relative to the stated goal |
+| NEUTRAL | No PR description available; OR description is vague but diff is coherent and scoped; OR minor adjacent fixes clearly related to the stated work |
+| DEGRADING | Diff includes out-of-scope changes not mentioned in the description; OR implementation is partial relative to the stated goal (feature half-done) |
+| CRITICAL | Stated problem and actual diff are unrelated; OR PR description fabricates behavior the diff does not implement; OR scope is so broad relative to the stated purpose that the true nature of the change is obscured |
+
 ---
 
 ## Step 5 — Compute Verdict
 
+**Before applying rules, apply two adjustments:**
+
+*Confidence adjustment:* When a signal was scored without access to the relevant tool (no linter configured, couldn't run tests, no audit tool available), its confidence is LOW. A LOW-confidence DEGRADING counts as NEUTRAL for verdict purposes — note it in the Conditions section as "unverified." A LOW-confidence CRITICAL counts as DEGRADING.
+
+*Scope proportionality check:* If the diff touches a large number of files (rough heuristic: >20 files) but the stated PR purpose is narrow or small in scope, flag a scope disproportion. This does not automatically change any signal score, but it should be called out in the verdict paragraph and may contribute to a HOLD if the discrepancy is significant.
+
 Apply in order (first matching rule wins):
 
-1. **BLOCK** — if ANY signal is CRITICAL
-2. **HOLD** — if 2 or more signals are DEGRADING
+1. **BLOCK** — if ANY signal is CRITICAL (after confidence adjustment)
+2. **HOLD** — if 2 or more signals are DEGRADING (after confidence adjustment); OR if scope disproportion is significant
 3. **MERGE WITH CONDITIONS** — if exactly 1 signal is DEGRADING; state the specific condition inline
 4. **RECOMMEND MERGE** — if all signals are NEUTRAL or IMPROVING
 
@@ -221,21 +249,30 @@ Base repo-assessment: [path to most recent report, or "none found"]
 
 ## Quality Signal Summary
 
-Legend: ↑ = IMPROVING  → = NEUTRAL  ↓ = DEGRADING  ✗ = CRITICAL
+Legend: ↑ = IMPROVING  → = NEUTRAL  ↓ = DEGRADING  ✗ = CRITICAL  |  Confidence: H = HIGH  M = MEDIUM  L = LOW (tool unavailable or signal ambiguous)
 
-| # | Signal | Direction | Evidence | Notes |
-|---|---|---|---|---|
-| 1 | Test Suite Health | [↑/→/↓/✗] | [command output summary] | [one line] |
-| 2 | Coverage Alignment | [↑/→/↓/✗] | [source lines added: N, test lines added: M] | [one line] |
-| 3 | Quality Infrastructure | [↑/→/↓/✗] | [files changed or "no CI/config changes"] | [one line] |
-| 4 | Static Analysis | [↑/→/↓/✗] | [linter output summary] | [one line] |
-| 5 | Type Safety | [↑/→/↓/✗] | [type checker output or escape counts] | [one line] |
-| 6 | Dependency Posture | [↑/→/↓/✗] | [deps added/removed/audited] | [one line] |
-| 7 | Security Posture | [↑/→/↓/✗] | [patterns found or "none detected"] | [one line] |
+| # | Signal | Direction | Confidence | Evidence | Notes |
+|---|---|---|---|---|---|
+| 1 | Test Suite Health | [↑/→/↓/✗] | [H/M/L] | [command output summary] | [one line] |
+| 2 | Coverage Alignment | [↑/→/↓/✗] | [H/M/L] | [source lines added: N, test lines added: M] | [one line] |
+| 3 | Quality Infrastructure | [↑/→/↓/✗] | [H/M/L] | [files changed or "no CI/config changes"] | [one line] |
+| 4 | Static Analysis | [↑/→/↓/✗] | [H/M/L] | [linter output summary] | [one line] |
+| 5 | Type Safety | [↑/→/↓/✗] | [H/M/L] | [type checker output or escape counts] | [one line] |
+| 6 | Dependency Posture | [↑/→/↓/✗] | [H/M/L] | [deps added/removed/audited] | [one line] |
+| 7 | Security Posture | [↑/→/↓/✗] | [H/M/L] | [patterns found or "none detected"] | [one line] |
+| 8 | Intent Alignment | [↑/→/↓/✗] | [H/M/L] | [PR description vs diff scope summary] | [one line] |
 
 ## Critical Findings
 
 [List each CRITICAL signal with specific evidence. If none: "No critical findings."]
+
+## Necessity Rationale
+
+[Answer two questions explicitly:
+1. What specific problem does this change solve? (Quote or paraphrase the PR description's problem statement.)
+2. Is there evidence in the codebase that this problem actually exists? (Call sites, error reports, failing behavior, referenced issue numbers, comments in the code.)
+
+If evidence of necessity is absent or thin, say so directly. A change that solves a problem nobody has costs more than it adds regardless of quality signal scores.]
 
 ## Conditions Required for Merge
 
