@@ -5,367 +5,128 @@ description: Use when assessing whether a repository has sufficient automated te
 
 # Repository Assessment
 
-Assess whether a repository's automated quality infrastructure is sufficient for trustworthy continuous auditing. Human review is not a reliable quality signal — this assessment determines whether automated systems can substitute for it.
+Score a repository across nine quality dimensions. Produce a report suitable for driving remediation via the `repo-hardening` skill.
 
-Execute steps in order. Do not backtrack. Produce the report template at the end.
+**This skill is read-only.** Do not add tasks, install tools, or modify the repository. If gaps need fixing, use `repo-hardening` after this assessment.
 
----
+<HARD-GATE>
+Do NOT write the report until you have run each existing task and observed real output. Assessment from code inspection alone is not assessment — it is guessing.
+</HARD-GATE>
 
-## Step 1 — Detect Ecosystems
+## Anti-Patterns
 
-Run the detection command, then map findings to ecosystems using the table.
+**"I can tell from the config files."** Run the tasks. A linter config that fails to run scores differently than one that passes.
+
+**"There's no test suite."** Score dimension 1 FAIL. Do not write smoke tests — that is repo-hardening's job.
+
+**"I'll skip dimensions with no task."** FAIL is still a score. Record it.
+
+## Checklist
+
+1. **Detect ecosystems** — identify all language ecosystems present
+2. **Detect task runners** — find Justfile, Makefile, Taskfile.yml, npm scripts, mise
+3. **List all tasks** — run the task runner's list command
+4. **Map tasks to nine dimensions** — note which dimensions have no task (= FAIL)
+5. **Run each task** — observe real output; score PASS / PARTIAL / FAIL
+6. **Score CI/CD and benchmark tracking** — check with detection commands below
+7. **Write the report**
+
+## Flow
+
+```dot
+digraph assessment {
+    "Detect ecosystems" [shape=box];
+    "Detect + list task runners" [shape=box];
+    "Map tasks to 9 dimensions" [shape=box];
+    "For each dimension:\ntask exists?" [shape=diamond];
+    "Run task\nobserve real output" [shape=box];
+    "Score FAIL\nnote gap" [shape=box];
+    "Score PASS / PARTIAL / FAIL" [shape=box];
+    "Check dim 7 (CI)\n+ dim 9 (benchmark tracking)" [shape=box];
+    "Write report" [shape=doublecircle];
+
+    "Detect ecosystems" -> "Detect + list task runners";
+    "Detect + list task runners" -> "Map tasks to 9 dimensions";
+    "Map tasks to 9 dimensions" -> "For each dimension:\ntask exists?";
+    "For each dimension:\ntask exists?" -> "Run task\nobserve real output" [label="yes"];
+    "For each dimension:\ntask exists?" -> "Score FAIL\nnote gap" [label="no"];
+    "Run task\nobserve real output" -> "Score PASS / PARTIAL / FAIL";
+    "Score PASS / PARTIAL / FAIL" -> "For each dimension:\ntask exists?" [label="next"];
+    "Score FAIL\nnote gap" -> "For each dimension:\ntask exists?" [label="next"];
+    "For each dimension:\ntask exists?" -> "Check dim 7 (CI)\n+ dim 9 (benchmark tracking)" [label="all done"];
+    "Check dim 7 (CI)\n+ dim 9 (benchmark tracking)" -> "Write report";
+}
+```
+
+## Detection Commands
+
+Run from the repository root:
 
 ```bash
-find . -maxdepth 3 \( \
-  -name "package.json" -o -name "package-lock.json" -o -name "yarn.lock" -o -name "pnpm-lock.yaml" \
-  -o -name "requirements.txt" -o -name "pyproject.toml" -o -name "setup.py" -o -name "Pipfile" -o -name "uv.lock" \
-  -o -name "go.mod" -o -name "go.sum" \
-  -o -name "Cargo.toml" -o -name "Cargo.lock" \
+# Ecosystems
+find . -maxdepth 3 \( -name "package.json" -o -name "yarn.lock" -o -name "pnpm-lock.yaml" \
+  -o -name "requirements.txt" -o -name "pyproject.toml" -o -name "setup.py" \
+  -o -name "Pipfile" -o -name "uv.lock" -o -name "go.mod" -o -name "Cargo.toml" \
   -o -name "*.csproj" -o -name "*.sln" \
 \) -not -path "*/node_modules/*" -not -path "*/target/*" -not -path "*/.git/*" 2>/dev/null | sort
-```
 
-| Indicator File(s)                                                      | Ecosystem |
-| ---------------------------------------------------------------------- | --------- |
-| `package.json`, `yarn.lock`, `pnpm-lock.yaml`, `package-lock.json`     | Node.js   |
-| `requirements.txt`, `pyproject.toml`, `setup.py`, `Pipfile`, `uv.lock` | Python    |
-| `go.mod`, `go.sum`                                                     | Go        |
-| `Cargo.toml`, `Cargo.lock`                                             | Rust      |
-| `*.csproj`, `*.sln`                                                    | .NET      |
+# Task runners
+ls Justfile Makefile Taskfile.yml Taskfile.yaml .mise.toml package.json 2>/dev/null
 
-> **Note — Ruby and JVM ecosystems:** Detection only. Step 2 commands cover Node.js, Python, Go, and Rust. For Ruby, Java/JVM, .NET, or other ecosystems, apply the same dimensional framework using the ecosystem's standard toolchain (e.g., `mvn test`, `bundle exec rspec`, `dotnet test`).
-
-Record every detected ecosystem. Repos may have multiple. Run all applicable commands for each detected ecosystem in Step 2.
-
-## Step 1.5 - Detect Repo Automation
-
-Look for scripts and commands memorialized as tasks in `package.json`, `just` Justfiles, or `mise` configuration.
-
-| Indicator File(s) | Task List        |
-| ----------------- | ---------------- |
-| `package.json`    | `npm run --list` |
-| `Justfile`        | `just --list`    |
-| `.mise.toml`      | `mise tasks`     |
-
-Use tasks from these sources to run test, benchmark, integration tests, etc. These tasks account for environment configuration.
-
-**If no ecosystem or automation is detected:**
-
-- Look for `Makefile`, `Dockerfile`, `*.sh` scripts — these indicate infrastructure-as-code or script-driven repos.
-- Apply the CI/CD and Security dimensions (7 and 6) as ecosystem-agnostic checks.
-- Score Dimensions 1–5 and 8–9 as NOT APPLICABLE (N/A) rather than FAIL.
-- Note this in the report verdict as a limitation.
-
----
-
-## Step 2 — Score Nine Dimensions
-
-Score each dimension PASS / PARTIAL / FAIL using the criteria in the table. Run the listed commands — do not infer from file presence alone.
-
-### Dimension 1: Unit Tests
-
-**Look for:** `test/`, `tests/`, `__tests__/`, `spec/`, `src/**/*.test.*`, `src/**/*.spec.*`
-
-| Ecosystem     | Command                                                                 |
-| ------------- | ----------------------------------------------------------------------- |
-| Node.js       | `npm test 2>&1 \| tail -20`                                             |
-| Python        | `python -m pytest --collect-only -q 2>&1 \| tail -20`                   |
-| Go            | `go test ./... -list '.*' 2>&1 \| tail -20`                             |
-| Rust          | `cargo test -- --list 2>&1 \| tail -20`                                 |
-| Script-driven | `just test`, `mise run test`, `npm run test`, etc. Use appropriate task |
-
-| Score   | Criterion                                                                                                                                                                                               |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PASS    | Tests exist AND run to completion (exit 0 or known failures, not "no tests found")                                                                                                                      |
-| PARTIAL | Test files exist but runner errors out or no tests collected; or tests exist only in a subdirectory with no root-level script wiring them (tests must be wired to a root-level script to count as PASS) |
-| FAIL    | No test files found, or runner reports 0 tests                                                                                                                                                          |
-
-### Dimension 2: Integration Tests
-
-**Look for:** `integration/`, `e2e/`, `test/integration/`, `cypress/`, `playwright/`, files named `*.integration.*` or `*.e2e.*`
-
-```bash
-find . -maxdepth 4 \( \
-  -path "*/integration*" -o -path "*/e2e*" \
-  -o -name "*.integration.*" -o -name "*.e2e.*" \
-  -o -name "cypress.config.*" -o -name "playwright.config.*" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-```
-
-| Ecosystem     | Command                                                                    |
-| ------------- | -------------------------------------------------------------------------- |
-| Node.js       | `npm run test:integration 2>&1 \| tail -10` (or `test:e2e`)                |
-| Python        | `python -m pytest tests/integration/ -q --collect-only 2>&1 \| tail -10`   |
-| Go            | `go test ./... -tags integration -list '.*' 2>&1 \| tail -10`              |
-| Rust          | `cargo test --test '*' -- --list 2>&1 \| tail -10`                         |
-| Script-driven | `just integration`, `mise run test:integration`, etc. Use appropriate task |
-
-| Score   | Criterion                                                             |
-| ------- | --------------------------------------------------------------------- |
-| PASS    | Dedicated integration/e2e test suite exists and is runnable           |
-| PARTIAL | Some integration coverage mixed into unit tests but no separate suite |
-| FAIL    | No integration tests found                                            |
-
-### Dimension 3: Benchmarks
-
-**Look for:** `bench/`, `benches/`, files named `*.bench.*`, `benchmark*`, `perf/`, `criterion` in Cargo.toml
-
-```bash
-find . -maxdepth 4 \( \
-  -path "*/bench*" -o -path "*/perf*" \
-  -o -name "*.bench.*" -o -name "benchmark*" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-```
-
-| Ecosystem     | Command                                                        |
-| ------------- | -------------------------------------------------------------- |
-| Node.js       | `npm run bench 2>&1 \| tail -10` (or `benchmark`)              |
-| Python        | `python -m pytest --co -q -k bench 2>&1 \| tail -10`           |
-| Go            | `go test ./... -bench=. -benchtime=1x 2>&1 \| tail -20`        |
-| Rust          | `cargo bench --no-run 2>&1 \| tail -10`                        |
-| Script-driven | `just bench`, `mise run benchmarks`, etc. Use appropriate task |
-
-| Score   | Criterion                                                        |
-| ------- | ---------------------------------------------------------------- |
-| PASS    | Benchmark suite exists and produces numeric output               |
-| PARTIAL | Benchmark files exist but no runnable suite or no numeric output |
-| FAIL    | No benchmark files found                                         |
-
-### Dimension 4: Static Analysis / Linting
-
-**Look for:** `.eslintrc*`, `eslint.config.*`, `.pylintrc`, `ruff.toml`, `.flake8`, `golangci.yml`, `.golangci*`, `clippy.toml`, `.rubocop.yml`
-
-```bash
-find . -maxdepth 3 \( \
-  -name ".eslintrc*" -o -name "eslint.config.*" \
-  -o -name ".pylintrc" -o -name "ruff.toml" -o -name ".flake8" -o -name ".ruff.toml" \
-  -o -name ".golangci*" -o -name "golangci.yml" \
-  -o -name "clippy.toml" -o -name ".clippy.toml" \
-  -o -name ".rubocop.yml" -o -name ".rubocop*" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-```
-
-| Ecosystem     | Command                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------- |
-| Node.js       | `npx eslint . --max-warnings=0 2>&1 \| tail -10`                                            |
-| Python        | `python -m ruff check . 2>&1 \| tail -10` (fallback: `python -m flake8 . 2>&1 \| tail -10`) |
-| Go            | `golangci-lint run ./... 2>&1 \| tail -10` (fallback: `go vet ./... 2>&1 \| tail -10`)      |
-| Rust          | `cargo clippy -- -D warnings 2>&1 \| tail -10`                                              |
-| Script-driven | `just lint` or `just check`, `mise run lint`, etc. Use task that runs appropriate tools     |
-
-| Score   | Criterion                                                                                                                                              |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PASS    | Linter config exists AND linter runs without "command not found" (Go: requires `golangci-lint` configured — `go vet` alone is not sufficient for PASS) |
-| PARTIAL | Linter config exists but not in CI, or only default rules with no config file; Go: `go vet` alone (without `golangci-lint`) scores PARTIAL, not PASS   |
-| FAIL    | No linter config and not referenced in CI                                                                                                              |
-
-### Dimension 5: Type Checking
-
-**Look for:** `tsconfig.json`, `tsconfig.*.json`, `mypy.ini`, `pyrightconfig.json`, `.mypy.ini`, `pyproject.toml` with `[tool.mypy]` or `[tool.pyright]`
-
-```bash
-find . -maxdepth 3 \( \
-  -name "tsconfig.json" -o -name "tsconfig.*.json" \
-  -o -name "mypy.ini" -o -name ".mypy.ini" -o -name "pyrightconfig.json" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-# Also check pyproject.toml for mypy/pyright sections:
-grep -l "\[tool\.mypy\]\|\[tool\.pyright\]" pyproject.toml 2>/dev/null
-```
-
-| Ecosystem            | Command                                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Node.js (TypeScript) | `npx tsc --noEmit 2>&1 \| tail -10` — if TypeScript is not in the project's dependencies, score Type Checking as FAIL |
-| Python (mypy)        | `python -m mypy . --ignore-missing-imports 2>&1 \| tail -10`                                                          |
-| Python (pyright)     | `pyright . 2>&1 \| tail -10`                                                                                          |
-| Go                   | `go build ./... 2>&1 \| tail -10` (Go is statically typed by default)                                                 |
-| Rust                 | `cargo check 2>&1 \| tail -10` (Rust is statically typed by default)                                                  |
-
-| Score   | Criterion                                                             |
-| ------- | --------------------------------------------------------------------- |
-| PASS    | Type checker config exists AND runs clean (or with only known errors) |
-| PARTIAL | TypeScript/typed Python used but no strict config or not run in CI    |
-| FAIL    | No type checking configured; untyped JavaScript or unannotated Python |
-
-### Dimension 6: Security Scanning
-
-**Look for:** `.github/workflows/` with `audit`, `snyk`, `trivy`, `grype`, `semgrep`; `.snyk`; `trivy.yaml`; SBOM files
-
-```bash
-find . -maxdepth 4 \( \
-  -name ".snyk" -o -name "trivy.yaml" -o -name ".trivyignore" \
-  -o -name "semgrep.yml" -o -name ".semgrep*" \
-\) -not -path "*/.git/*" 2>/dev/null | sort
-# Check CI for security tooling:
-grep -r "audit\|snyk\|trivy\|grype\|semgrep\|dependabot\|renovate" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
-```
-
-| Ecosystem     | Command                                                                                                                                                                                                                              |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Node.js       | `npm audit --audit-level=high 2>&1 \| tail -20` — If the command returns `ENOLOCK`: the project has no lockfile. This is itself a security gap — score Security as PARTIAL and add "No package-lock.json" to Missing Infrastructure. |
-| Python        | `pip-audit 2>&1 \| tail -20` (fallback: `safety check 2>&1 \| tail -20`)                                                                                                                                                             |
-| Go            | `govulncheck ./... 2>&1 \| tail -20`                                                                                                                                                                                                 |
-| Rust          | `cargo audit 2>&1 \| tail -20`                                                                                                                                                                                                       |
-| Script-driven | `just audit`, `mise run audit`, etc. Use task that runs appropriate tools                                                                                                                                                            |
-
-| Score   | Criterion                                                                       |
-| ------- | ------------------------------------------------------------------------------- |
-| PASS    | Security scanner runs AND is integrated in CI (Dependabot/Renovate counts)      |
-| PARTIAL | Scanner available locally but not in CI, or only Dependabot with no active scan |
-| FAIL    | No security scanning configured; audit command errors with "not found"          |
-
-### Dimension 7: CI/CD Pipeline
-
-**Look for:** `.github/workflows/*.yml`,
-
-```bash
-find . -maxdepth 4 \( \
-  -path "*/.github/workflows/*.yml" -o -path "*/.github/workflows/*.yaml" \
-\) -not -path "*/.git/*" 2>/dev/null | sort
-```
-
-For each found CI file, check which steps are automated:
-
-```bash
-# Summarize job names in GitHub Actions:
+# CI workflows + key steps
+find . -maxdepth 4 \( -path "*/.github/workflows/*.yml" -o -path "*/.github/workflows/*.yaml" \) \
+  -not -path "*/.git/*" 2>/dev/null | sort
 grep -h "^\s*\(name:\|run:\|uses:\)" .github/workflows/*.yml 2>/dev/null | head -40
-```
 
-| Score   | Criterion                                                                                                                                                      |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PASS    | CI config exists AND references at least test + lint steps                                                                                                     |
-| PARTIAL | CI config exists but only runs build (no test or lint); or CI only runs JSON schema validation — this shows CI infrastructure exists but without quality gates |
-| FAIL    | No CI config found                                                                                                                                             |
-
-### Dimension 8: Coverage Tracking Over Time
-
-**Look for:** `.coveragerc`, `coverage.xml`, `lcov.info`, git metadata branch (`etc/coverage`), CI steps that store coverage output
-
-```bash
-find . -maxdepth 4 \( \
-  -name ".coveragerc" -o -name "coverage.xml" -o -name "lcov.info" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
-# Check for git metadata branch:
-git branch -a 2>/dev/null | grep -E "etc/coverage|\.metadata" | head -5
-# Check CI for coverage persistence:
-grep -r "etc/coverage\|coverage.*artifact\|upload.*coverage\|coverage.*store\|lcov\|coverage report" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
-```
-
-| Ecosystem     | Command                                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------------------------------- |
-| Node.js       | `npm test -- --coverage 2>&1 \| tail -20` (or `npx jest --coverage`)                                            |
-| Python        | `python -m pytest --cov=. --cov-report=term-missing 2>&1 \| tail -20`                                           |
-| Go            | `go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out 2>&1 \| tail -10`                 |
-| Rust          | `cargo llvm-cov --summary-only 2>&1 \| tail -10` (fallback: `cargo tarpaulin --print-summary 2>&1 \| tail -10`) |
-| Script-driven | `just coverage` or `just test:cover`, `mise run test:coverage`, etc. Use task that runs appropriate tools       |
-
-| Score   | Criterion                                                                                                                                                                  |
-| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PASS    | Coverage is measured AND results are stored persistently across runs: git metadata branch (`etc/coverage`), CI artifact with a retention policy, or equivalent local store |
-| PARTIAL | Coverage is measured locally or in CI but not stored or trended across runs                                                                                                |
-| FAIL    | No coverage measurement configured                                                                                                                                         |
-
-> **Git Metadata Branch Pattern** — store historical output in a dedicated branch that never merges into main. Works for any repo, no external service required:
->
-> ```bash
-> # Run once to create the branch (orphan = no shared history with main):
-> git checkout --orphan etc/coverage && git rm -rf . && git commit --allow-empty -m "init" && git checkout -
->
-> # Add to CI after generating coverage output:
-> git worktree add /tmp/cov-meta etc/coverage
-> cp coverage.out "/tmp/cov-meta/$(date +%Y-%m-%d)-$(git rev-parse --short HEAD).out"
-> git -C /tmp/cov-meta add -A
-> git -C /tmp/cov-meta commit -m "coverage: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-> git push origin etc/coverage
-> git worktree remove /tmp/cov-meta
-> ```
->
-> Use the same pattern with `etc/benchmarks` for Dimension 9. History is queryable with `git log etc/coverage`.
-
-### Dimension 9: Benchmark Tracking Over Time
-
-**Look for:** git metadata branch (`etc/benchmarks`), CI artifact with retention, `criterion` output stored across runs
-
-```bash
-# Check for git metadata branch:
+# Benchmark tracking
 git branch -a 2>/dev/null | grep -E "etc/bench|\.metadata" | head -5
-# Check CI for benchmark persistence:
-grep -r "etc/bench\|bench.*artifact\|store.*bench\|bench.*store\|benchmark.*history" .github/ .circleci/ .gitlab-ci.yml 2>/dev/null | grep -v ".git" | head -20
+grep -r "etc/bench\|bench.*artifact\|store.*bench\|benchmark.*history" .github/ 2>/dev/null | head -10
+
+# Coverage artifacts (run after scoring dimension 8)
+find . -maxdepth 4 \( -name "lcov.info" -o -name "coverage.xml" -o -name "coverage.json" \
+  -o -path "*/coverage/*" \) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
 ```
 
-| Score   | Criterion                                                                                                                                                          |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PASS    | Benchmarks run in CI AND results are stored across runs: git metadata branch (`etc/benchmarks`), CI artifact with retention policy, or equivalent persistent store |
-| PARTIAL | Benchmarks exist and run in CI but results are discarded after each run (no history, no comparison)                                                                |
-| FAIL    | No benchmark tracking in CI                                                                                                                                        |
+## Nine Dimensions
 
----
+| #   | Dimension          | Common task names                        | Scoring                                                                                              |
+| --- | ------------------ | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| 1   | Unit Tests         | `test`, `unit`, `spec`                   | PASS: exits 0, meaningful output; PARTIAL: tool not installed; FAIL: no task                         |
+| 2   | Integration Tests  | `test:integration`, `e2e`, `integration` | PASS: exits 0; PARTIAL: tool not installed; FAIL: no task                                            |
+| 3   | Benchmarks         | `bench`, `benchmark`, `perf`             | PASS: exits 0; PARTIAL: tool not installed; FAIL: no task                                            |
+| 4   | Static Analysis    | `lint`, `check`, `fmt:check`             | PASS: exits 0; PARTIAL: config errors; FAIL: no task                                                 |
+| 5   | Type Checking      | `typecheck`, `type-check`, `types`       | PASS: exits 0; PARTIAL: tool not installed; FAIL: no task                                            |
+| 6   | Security Scanning  | `audit`, `security`, `vuln`, `scan`      | PASS: exits 0 with high-vuln enforcement; PARTIAL: runs without enforcement; FAIL: no task           |
+| 7   | CI/CD Pipeline     | — (detection commands)                   | PASS: CI exists + test + lint steps; PARTIAL: CI exists, build only; FAIL: no CI                     |
+| 8   | Coverage Tracking  | `coverage`, `cov`                        | PASS: exits 0 + artifact in `coverage/`; PARTIAL: exits 0, no artifact; FAIL: no task                |
+| 9   | Benchmark Tracking | — (detection commands)                   | PASS: CI runs benchmarks + stores results persistently; PARTIAL: runs, results discarded; FAIL: none |
 
-## Step 3 — Fill Report Template
-
-Use this template exactly. Replace every `[PLACEHOLDER]` with findings. Do not omit sections.
-
-```
-# Repository Assessment: [REPO NAME]
-
-Date: [DATE]
-Ecosystems detected: [LIST ALL]
-
-## Quality Infrastructure Summary
-
-Legend: ✓ = PASS  ⚠ = PARTIAL  ✗ = FAIL
-
-| # | Dimension | Status | Evidence | Notes |
-|---|---|---|---|---|
-| 1 | Unit Tests | [✓/✗/⚠] | [file or command output] | [one line] |
-| 2 | Integration Tests | [✓/✗/⚠] | [file or command output] | [one line] |
-| 3 | Benchmarks | [✓/✗/⚠] | [file or command output] | [one line] |
-| 4 | Static Analysis | [✓/✗/⚠] | [file or command output] | [one line] |
-| 5 | Type Checking | [✓/✗/⚠] | [file or command output] | [one line] |
-| 6 | Security Scanning | [✓/✗/⚠] | [file or command output] | [one line] |
-| 7 | CI/CD Pipeline | [✓/✗/⚠] | [file or command output] | [one line] |
-| 8 | Coverage Tracking | [✓/✗/⚠] | [file or command output] | [one line] |
-| 9 | Benchmark Tracking | [✓/✗/⚠] | [file or command output] | [one line] |
-
-## Missing Infrastructure
-
-List only dimensions scored PARTIAL or FAIL, ordered by impact (blocking gaps first).
-
-### [DIMENSION NAME] — [PARTIAL/FAIL]
-- **What:** [specific gap]
-- **Why:** [consequence for automated auditing]
-- **How:** [exact fix command or config to add]
-
-(repeat for each gap)
+After scoring dimension 8, run the coverage artifacts detection command. No file = PARTIAL regardless of exit code.
 
 ## Verdict
 
-**SUITABLE / NOT SUITABLE for automated auditing**
+**SUITABLE** for automated auditing requires ALL of:
 
-Criteria for SUITABLE (ALL must be true):
 - Dimension 1 (Unit Tests): PASS
 - Dimension 4 (Static Analysis): PASS
 - Dimension 6 (Security Scanning): PASS or PARTIAL
 - Dimension 7 (CI/CD Pipeline): PASS
-- No more than 1 dimension scored FAIL
+- No more than 1 other dimension scored FAIL
 
-If NOT SUITABLE, state the blocking gaps (FAIL scores on dimensions 1, 4, 6, or 7, or more than 1 total FAIL).
-```
+Otherwise: **NOT SUITABLE** — state which conditions are not met.
 
----
+## Report
 
-## Step 4 — Save the Report
-
-Derive the project name and today's date, then save the completed report to a file.
+Fill the template in `reference/report-template.md` and save:
 
 ```bash
-# Derive project name: prefer git remote slug, fall back to directory name
 PROJECT=$(git remote get-url origin 2>/dev/null | sed 's|.*/||; s|\.git$||')
 [ -z "$PROJECT" ] && PROJECT=$(basename "$(pwd)")
 DATE=$(date +%Y-%m-%d)
 mkdir -p reports/assessment
-REPORT_PATH="reports/assessment/${DATE}-${PROJECT}-analysis.md"
+# Save to: reports/assessment/${DATE}-${PROJECT}-analysis.md
 ```
 
-Write the filled report template to `$REPORT_PATH`.
+## Terminal State
 
-After saving, output: `Report saved to $REPORT_PATH`
+Report written to `reports/assessment/`. Repository is unchanged. If the verdict is NOT SUITABLE or any gaps exist, offer to run `repo-hardening`.
