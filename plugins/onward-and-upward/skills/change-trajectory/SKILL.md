@@ -59,15 +59,6 @@ Determine what is being assessed. Accept any of these forms:
 
 Find the merge base (where the branch diverged) and get the list of changed files. If the changeset is on the default branch itself (base equals HEAD), assess the most recent commit instead and note it.
 
-```bash
-DEFAULT_BRANCH=$(git remote show origin 2>/dev/null | grep "HEAD branch" | awk '{print $NF}')
-[ -z "$DEFAULT_BRANCH" ] && DEFAULT_BRANCH=$(git branch -r | grep -E "origin/(main|master)" | head -1 | sed 's|.*origin/||' | xargs)
-[ -z "$DEFAULT_BRANCH" ] && DEFAULT_BRANCH="main"
-BASE=$(git merge-base HEAD $DEFAULT_BRANCH 2>/dev/null || echo "$DEFAULT_BRANCH")
-git diff --name-only $BASE..HEAD
-git diff --stat $BASE..HEAD | tail -3
-```
-
 Record the base ref and changeset description. For PRs, note the title and description — they provide intent context that informs proportionality judgments in Signal 2.
 
 ---
@@ -294,16 +285,9 @@ For RECOMMEND MERGE: write "N/A"]
 
 ## Step 7 — Save the Report
 
-```bash
-PROJECT=$(git remote get-url origin 2>/dev/null | sed 's|.*/||; s|\.git$||')
-[ -z "$PROJECT" ] && PROJECT=$(basename "$(pwd)")
-DATE=$(date +%Y-%m-%d)
-CHANGESET=$(git rev-parse --abbrev-ref HEAD 2>/dev/null | sed 's|/|-|g' || echo "unknown")
-mkdir -p reports/change-trajectory
-REPORT_PATH="reports/change-trajectory/${DATE}-${PROJECT}-${CHANGESET}.md"
-```
+Write the report to the REPORT_PATH at `reports/change-trajectory/YYYY-MM-DD-REPO.md`
 
-Write the filled report template to `$REPORT_PATH`. Output: `Report saved to $REPORT_PATH`
+Output: `Report saved to REPORT_PATH`
 
 ---
 
