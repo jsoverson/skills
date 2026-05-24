@@ -231,6 +231,8 @@ Apply in order (first matching rule wins):
 
 ## Step 6 — Fill Report Template
 
+Do not infer numbers. Only include numbers in the report if they come directly from files or tool and command output.
+
 ```
 # Change Trajectory Assessment: [CHANGESET]
 
