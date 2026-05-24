@@ -11,6 +11,8 @@ Evaluate whether a proposed change improves or degrades the repository's quality
 
 If a repo-assessment report exists in `reports/assessment/`, read the most recent one — it establishes baseline quality context for interpreting signals.
 
+Assume you are the last stage of a PR review pipeline. Assume all checks pass, all tests pass, all audits pass, the build succeeds, and integrations pass. Your job is to assess the changes and establish whether or not they raise the overall quality of the repository or they compromise it.
+
 ---
 
 ## Flow
@@ -36,19 +38,20 @@ digraph change_trajectory {
 
 ## Anti-Patterns
 
-| Thought | Reality |
-|---|---|
-| "Tool not available → NEUTRAL" | Tool absence doesn't mean no problem. Investigate what commands exist for this ecosystem before giving up. |
-| "Tests pass → coverage is fine" | Passing tests don't tell you if new code paths are covered. Read the diff — what logic was added, is there a test that would catch it being wrong? |
-| "Line ratio is authoritative" | Type declarations and constants don't need tests. Branching logic does. The ratio is a starting point, not a verdict. |
-| "CI diff looks clean" | Multi-line step removals span many diff lines, none starting with `run:`. Read the full workflow diff, not just grep output. |
-| "Nothing flagged → security is fine" | Heuristic patterns catch common issues, not all issues. Review sensitive code paths manually when in doubt. |
+| Thought                              | Reality                                                                                                                                            |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Tool not available → NEUTRAL"       | Tool absence doesn't mean no problem. Investigate what commands exist for this ecosystem before giving up.                                         |
+| "Tests pass → coverage is fine"      | Passing tests don't tell you if new code paths are covered. Read the diff — what logic was added, is there a test that would catch it being wrong? |
+| "Line ratio is authoritative"        | Type declarations and constants don't need tests. Branching logic does. The ratio is a starting point, not a verdict.                              |
+| "CI diff looks clean"                | Multi-line step removals span many diff lines, none starting with `run:`. Read the full workflow diff, not just grep output.                       |
+| "Nothing flagged → security is fine" | Heuristic patterns catch common issues, not all issues. Review sensitive code paths manually when in doubt.                                        |
 
 ---
 
 ## Step 1 — Identify the Changeset
 
 Determine what is being assessed. Accept any of these forms:
+
 - PR URL or number → use `gh pr diff <number>` and `gh pr view <number>`
 - Branch name → compare against the default branch
 - Commit range → `git diff <base>..<tip>`
@@ -78,6 +81,7 @@ Identify which ecosystems are present by looking for manifest files: `package.js
 ## Step 3 — Categorize Changed Files
 
 Classify the changed files into:
+
 - **Source** — business logic (non-test code)
 - **Tests** — test and spec files
 - **CI/CD config** — workflow files, pipeline configs
@@ -100,18 +104,16 @@ Score each signal: **IMPROVING** (↑) / **NEUTRAL** (→) / **DEGRADING** (↓)
 
 ### Signal 1: Test Suite Health
 
-**What matters:** Do all tests pass after this change? Did the change add new tests for new logic? Does the new logic appear correct?
+**What matters:** Did the change add new tests for new logic? Does the new logic appear correct?
 
-Run the test suite at the tip ref and read the output — don't just check the exit code. Then compare against base: if tests were already failing before this change, do not penalize it for pre-existing failures. Assess only the delta this change introduces.
+Assess the delta this change introduces. Read the new logic in the diff for correctness errors: reversed conditions, off-by-one bounds, null dereferences on unchecked values, unhandled error returns, or logic inversions. Tests don't catch what they don't test — a passing suite doesn't mean correct logic.
 
-Also read the new logic in the diff for obvious correctness errors: reversed conditions, off-by-one bounds, null dereferences on unchecked values, unhandled error returns, or logic inversions. Tests don't catch what they don't test — a passing suite doesn't mean correct logic.
-
-| Score | Criterion |
-|---|---|
-| IMPROVING | New tests were added AND all tests pass; OR obvious pre-existing failures were fixed |
-| NEUTRAL | No new tests, but all tests that passed at the base still pass; no obvious logic errors in new code |
-| DEGRADING | Tests modified in ways that reduce assertion strength (assertions commented out, failure cases removed) but suite still passes; OR new logic contains suspicious but non-obvious errors |
-| CRITICAL | Tests that passed at the base now fail after this change; OR test files deleted with no equivalent replacement; OR new logic contains an obvious, unambiguous error (reversed condition, dead branch that makes the feature inoperable) |
+| Score     | Criterion                                                                                                |
+| --------- | -------------------------------------------------------------------------------------------------------- |
+| IMPROVING | New tests were added; OR obvious pre-existing failures were fixed                                        |
+| NEUTRAL   | No new code and no new tests; no signal to evaluate                                                      |
+| DEGRADING | Tests modified in ways that reduce assertion strength (assertions commented out, failure cases removed); |
+| CRITICAL  | Test files deleted with no equivalent replacement; OR tests bypassed                                     |
 
 If no test suite exists: CRITICAL if new source files with branching logic were added, NEUTRAL if only config/docs/declarations changed.
 
@@ -123,12 +125,12 @@ Read the diff. Identify what new functions, methods, or conditional branches wer
 
 Constants, type declarations, and configuration files do not need tests. Functions with conditional logic do. Do not penalize the change for pre-existing uncovered code — assess only the coverage ratio of what this change adds.
 
-| Score | Criterion |
-|---|---|
-| IMPROVING | Test lines added ≥ source lines added, OR new tests demonstrably cover new logic introduced by this change |
-| NEUTRAL | No new source code; OR new source is only constants/interfaces/type declarations with no branching logic; OR diff shows only parameter name changes, docstrings, or comments with no new control flow |
-| DEGRADING | New functions/methods with branching logic added by this change, but no corresponding tests |
-| CRITICAL | Test files deleted with no replacement; test assertions removed without equivalent coverage elsewhere |
+| Score     | Criterion                                                                                                                                                                                             |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IMPROVING | Test lines added ≥ source lines added, OR new tests demonstrably cover new logic introduced by this change                                                                                            |
+| NEUTRAL   | No new source code; OR new source is only constants/interfaces/type declarations with no branching logic; OR diff shows only parameter name changes, docstrings, or comments with no new control flow |
+| DEGRADING | New functions/methods with branching logic added by this change, but no corresponding tests                                                                                                           |
+| CRITICAL  | Test files deleted with no replacement; test assertions removed without equivalent coverage elsewhere                                                                                                 |
 
 ### Signal 3: Quality Infrastructure Integrity
 
@@ -136,12 +138,12 @@ Constants, type declarations, and configuration files do not need tests. Functio
 
 Read the full workflow diff — not just grep output. A multi-line CI step that gets removed will show its content across many diff lines, none of which start with `run:`. Look for removed test runner invocations (`pytest`, `npm test`, `go test`, `cargo test`) and linter invocations (`eslint`, `ruff`, `golangci-lint`, `clippy`). Also check quality config files for rules being disabled or thresholds being lowered.
 
-| Score | Criterion |
-|---|---|
-| IMPROVING | New quality gates added; linting rules strengthened; coverage thresholds raised; new security step added |
-| NEUTRAL | No changes to CI or quality configs |
-| DEGRADING | CI steps made optional via `continue-on-error: true`; linting rules relaxed or disabled |
-| CRITICAL | Test, lint, or security steps removed from CI; quality config deleted; `--no-verify` added to CI; coverage threshold lowered or removed |
+| Score     | Criterion                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| IMPROVING | New quality gates added; linting rules strengthened; coverage thresholds raised; new security step added                                |
+| NEUTRAL   | No changes to CI or quality configs                                                                                                     |
+| DEGRADING | CI steps made optional via `continue-on-error: true`; linting rules relaxed or disabled                                                 |
+| CRITICAL  | Test, lint, or security steps removed from CI; quality config deleted; `--no-verify` added to CI; coverage threshold lowered or removed |
 
 ### Signal 4: Static Analysis Compliance
 
@@ -149,12 +151,12 @@ Read the full workflow diff — not just grep output. A multi-line CI step that 
 
 Run the linter for the detected ecosystem at the tip ref, then compare against the base. If the linter was already producing violations before this change, do not penalize it for pre-existing debt — assess only the delta. Check the diff for inline suppression comments (`eslint-disable`, `# noqa`, `// nolint`, `#[allow(clippy`, `# type: ignore`). Net new suppressions indicate the author knew about violations and chose to silence them rather than fix them.
 
-| Score | Criterion |
-|---|---|
+| Score     | Criterion                                                                |
+| --------- | ------------------------------------------------------------------------ |
 | IMPROVING | Net reduction in lint violations; suppressions removed (removed > added) |
-| NEUTRAL | No change in lint violations; linter passes as before |
-| DEGRADING | New inline suppressions added without removing old ones; OR linter now produces warnings that were previously absent |
-| CRITICAL | Linter fails after this change due to new violations; OR linting config deleted or rules critically relaxed |
+| NEUTRAL   | No change in lint violations; new suppressions are valid and justified;  |
+| DEGRADING | New inline suppressions added without justification;                     |
+| CRITICAL  | Linting config deleted or rules critically relaxed                       |
 
 ### Signal 5: Type Safety Trajectory
 
@@ -162,12 +164,12 @@ Run the linter for the detected ecosystem at the tip ref, then compare against t
 
 Check the diff for type escapes (`: any`, `as any`, `@ts-ignore`, `@ts-nocheck`, `# type: ignore`, `cast(Any`). Run the type checker if available. Net new type escapes indicate the author encountered a type error and chose to suppress it rather than fix it.
 
-| Score | Criterion |
-|---|---|
+| Score     | Criterion                                                                                                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------- |
 | IMPROVING | Type escapes removed (removed > added); stricter type config enabled; new type annotations added to previously untyped code |
-| NEUTRAL | No change in type coverage; type checker passes as before |
-| DEGRADING | New `any` types or `@ts-ignore` added (added > removed); type checker produces new warnings |
-| CRITICAL | Type checker fails after this change; type checking disabled in config (`strict: false` added); type config deleted |
+| NEUTRAL   | No change in type coverage;                                                                                                 |
+| DEGRADING | New `any` types or `@ts-ignore` added (added > removed); Using `let _ = ...;` to bypass "must_use" directives               |
+| CRITICAL  | Type checker fails after this change; type checking disabled in config (`strict: false` added); type config deleted         |
 
 If TypeScript or mypy is not configured, score NEUTRAL and note the limitation.
 
@@ -177,12 +179,12 @@ If TypeScript or mypy is not configured, score NEUTRAL and note the limitation.
 
 If dependency manifests changed, read what was added or removed. Run a security audit for the affected ecosystem. If no audit tool is available, assess based on manifest inspection alone and note the limitation.
 
-| Score | Criterion |
-|---|---|
-| IMPROVING | Dependencies removed (reduced attack surface); known vulnerabilities patched via upgrade; lockfile freshened |
-| NEUTRAL | No dependency manifest changes |
-| DEGRADING | New dev-only dependencies added (limited blast radius); minor version bumps without security motivation |
-| CRITICAL | New production dependencies with known high/critical CVEs; lockfile deleted; manifest and lockfile diverge after this change |
+| Score     | Criterion                                                                                                                    |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| IMPROVING | Dependencies removed (reduced attack surface); known vulnerabilities patched via upgrade; lockfile freshened                 |
+| NEUTRAL   | No dependency manifest changes                                                                                               |
+| DEGRADING | New production dependencies added without clear justification; major version bumps without security motivation               |
+| CRITICAL  | New production dependencies with known high/critical CVEs; lockfile deleted; manifest and lockfile diverge after this change |
 
 ### Signal 7: Security Posture
 
@@ -190,12 +192,12 @@ If dependency manifests changed, read what was added or removed. Run a security 
 
 Scan the diff for hardcoded credentials, dangerous execution patterns (`eval`, `exec`, `shell=True` on external input, `os.system`), and auth bypass flags. Check for changes to security scanner configs that weaken coverage. Heuristic patterns catch common issues — review sensitive code paths manually when in doubt.
 
-| Score | Criterion |
-|---|---|
-| IMPROVING | Security hardening added (input validation, auth checks, output encoding); known-vulnerable dependency removed; security scanner added |
-| NEUTRAL | No security-relevant changes detected |
-| DEGRADING | Security config suppressions added (`.trivyignore` entries); security-sensitive code paths modified without clear rationale in PR description |
-| CRITICAL | Credentials or secrets visible in the diff; known dangerous patterns added (unsanitized `eval`, `shell=True` on external input, auth bypass flags); security scanner removed from CI |
+| Score     | Criterion                                                                                                                                                                               |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IMPROVING | Security hardening added (input validation, auth checks, output encoding); known-vulnerable dependency removed; security scanner added                                                  |
+| NEUTRAL   | No security-relevant changes detected                                                                                                                                                   |
+| DEGRADING | Security config suppressions added; security-sensitive code paths modified without clear rationale in PR description                                                                    |
+| CRITICAL  | Credentials or secrets visible in the diff; known dangerous patterns added (unsanitized `eval`, shell execution on external input, auth bypass flags); security scanner removed from CI |
 
 ### Signal 8: Intent Alignment
 
@@ -210,12 +212,12 @@ A PR that claims to "fix a display bug" but modifies auth middleware is doing un
 
 If no PR description is available, score NEUTRAL and note the absence.
 
-| Score | Criterion |
-|---|---|
-| IMPROVING | Diff precisely matches the stated purpose; no out-of-scope changes; implementation is complete relative to the stated goal |
-| NEUTRAL | No PR description available; OR description is vague but diff is coherent and scoped; OR minor adjacent fixes clearly related to the stated work |
-| DEGRADING | Diff includes out-of-scope changes not mentioned in the description; OR implementation is partial relative to the stated goal (feature half-done) |
-| CRITICAL | Stated problem and actual diff are unrelated; OR PR description fabricates behavior the diff does not implement; OR scope is so broad relative to the stated purpose that the true nature of the change is obscured |
+| Score     | Criterion                                                                                                                                                                                                           |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IMPROVING | Diff precisely matches the stated purpose; no out-of-scope changes; implementation is complete relative to the stated goal                                                                                          |
+| NEUTRAL   | No PR description available; OR description is vague but diff is coherent and scoped; OR minor adjacent fixes clearly related to the stated work                                                                    |
+| DEGRADING | Diff includes out-of-scope changes not mentioned in the description; OR implementation is partial relative to the stated goal (feature half-done)                                                                   |
+| CRITICAL  | Stated problem and actual diff are unrelated; OR PR description fabricates behavior the diff does not implement; OR scope is so broad relative to the stated purpose that the true nature of the change is obscured |
 
 ---
 
@@ -223,14 +225,14 @@ If no PR description is available, score NEUTRAL and note the absence.
 
 **Before applying rules, apply two adjustments:**
 
-*Confidence adjustment:* When a signal was scored without access to the relevant tool (no linter configured, couldn't run tests, no audit tool available), its confidence is LOW. A LOW-confidence DEGRADING counts as NEUTRAL for verdict purposes — note it in the Conditions section as "unverified." A LOW-confidence CRITICAL counts as DEGRADING.
+_Confidence adjustment:_ When a signal was scored due to absence of information (e.g. no PR description, missing tools), its confidence is LOW. A LOW-confidence DEGRADING counts as NEUTRAL for verdict purposes — note it in the Conditions section as "unverified." A LOW-confidence CRITICAL counts as DEGRADING. A low confidence IMPROVING counts as NEUTRAL.
 
-*Scope proportionality check:* If the diff touches a large number of files (rough heuristic: >20 files) but the stated PR purpose is narrow or small in scope, flag a scope disproportion. This does not automatically change any signal score, but it should be called out in the verdict paragraph and may contribute to a HOLD if the discrepancy is significant.
+_Scope proportionality check:_ If the diff touches a large number of files (rough heuristic: >20 files) but the stated PR purpose is narrow or small in scope, flag a scope disproportion. This does not automatically change any signal score, but it should be called out in the verdict paragraph and may contribute to a HOLD if the discrepancy is significant.
 
 Apply in order (first matching rule wins):
 
 1. **BLOCK** — if ANY signal is CRITICAL (after confidence adjustment)
-2. **HOLD** — if 2 or more signals are DEGRADING (after confidence adjustment); OR if scope disproportion is significant
+2. **HOLD** — if 2 or more signals are DEGRADING (after confidence adjustment); OR if scope disproportion is significant; state the specific reasons that require human review; state the actions the submitter can take to improve the state of these changes.
 3. **MERGE WITH CONDITIONS** — if exactly 1 signal is DEGRADING; state the specific condition inline
 4. **RECOMMEND MERGE** — if all signals are NEUTRAL or IMPROVING
 
@@ -302,3 +304,9 @@ REPORT_PATH="reports/change-trajectory/${DATE}-${PROJECT}-${CHANGESET}.md"
 ```
 
 Write the filled report template to `$REPORT_PATH`. Output: `Report saved to $REPORT_PATH`
+
+---
+
+## Step 8 - Output the Report
+
+Display the report to the user as output.
