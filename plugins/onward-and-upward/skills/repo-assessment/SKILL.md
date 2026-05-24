@@ -21,10 +21,8 @@ find . -maxdepth 3 \( \
   -o -name "requirements.txt" -o -name "pyproject.toml" -o -name "setup.py" -o -name "Pipfile" -o -name "uv.lock" \
   -o -name "go.mod" -o -name "go.sum" \
   -o -name "Cargo.toml" -o -name "Cargo.lock" \
-  -o -name "pom.xml" -o -name "build.gradle" -o -name "build.gradle.kts" \
   -o -name "*.csproj" -o -name "*.sln" \
-  -o -name "Gemfile" -o -name "Gemfile.lock" \
-\) -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | sort
+\) -not -path "*/node_modules/*" -not -path "*/target/*" -not -path "*/.git/*" 2>/dev/null | sort
 ```
 
 | Indicator File(s)                                                      | Ecosystem |
@@ -33,9 +31,7 @@ find . -maxdepth 3 \( \
 | `requirements.txt`, `pyproject.toml`, `setup.py`, `Pipfile`, `uv.lock` | Python    |
 | `go.mod`, `go.sum`                                                     | Go        |
 | `Cargo.toml`, `Cargo.lock`                                             | Rust      |
-| `pom.xml`, `build.gradle`, `build.gradle.kts`                          | Java/JVM  |
 | `*.csproj`, `*.sln`                                                    | .NET      |
-| `Gemfile`, `Gemfile.lock`                                              | Ruby      |
 
 > **Note — Ruby and JVM ecosystems:** Detection only. Step 2 commands cover Node.js, Python, Go, and Rust. For Ruby, Java/JVM, .NET, or other ecosystems, apply the same dimensional framework using the ecosystem's standard toolchain (e.g., `mvn test`, `bundle exec rspec`, `dotnet test`).
 
