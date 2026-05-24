@@ -153,11 +153,11 @@ Each task type has a minimum bar. FAIL → full task meeting the bar. PARTIAL �
 
 **Integration Tests (FAIL):** Create a separate integration test directory, write one test that crosses a real boundary (file I/O, subprocess, network, or end-to-end public API invocation). A test that just returns `true` does not qualify. Add to CI, ideally as a separate job. PARTIAL: create the separate directory structure if tests are currently mixed with unit tests.
 
-**Coverage Tracking (FAIL):** Run tests with coverage measurement, create an orphan `etc/coverage` branch to store history, add CI steps to measure and commit coverage reports to that branch after each run. PARTIAL: add the persistence step if coverage is measured but not stored.
+**Coverage Tracking (FAIL):** Run tests with coverage measurement, create an orphan `etc/coverage` branch to store history, add CI steps to measure and commit coverage reports to that branch after each run. PARTIAL: add the persistence step if coverage is measured but not stored. Use the patterns in `reference/metadata-branch-template.md` to set up the CI step that commits to the orphan branch.
 
 **Benchmarks (FAIL):** Only generate this task if the project has performance-sensitive code. CLI tools, config libraries, and similar projects do not need benchmarks — note this and skip. If applicable: install the benchmark library, write one benchmark for the hottest path (read the source first), run it and capture baseline output, commit the result.
 
-**Benchmark Tracking (FAIL/PARTIAL):** Create an orphan `etc/benchmarks` branch, add CI steps to run benchmarks and commit output to that branch. Mirrors the coverage tracking pattern.
+**Benchmark Tracking (FAIL/PARTIAL):** Create an orphan `etc/benchmarks` branch, add CI steps to run benchmarks and commit output to that branch. Mirrors the coverage tracking pattern. Use the patterns in `reference/metadata-branch-template.md` to set up the CI step that commits to the orphan branch.
 
 ---
 
