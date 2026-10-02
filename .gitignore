@@ -1,2 +1,4 @@
 .archive/
 examples/
+
+node_modules

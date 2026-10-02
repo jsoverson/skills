@@ -11,19 +11,18 @@
   },
   "plugins": [
     {
-      "name": "onward-and-upward",
-      "source": "./plugins/onward-and-upward",
+      "name": "primary",
+      "source": "./plugins/primary",
       "strict": true,
-      "description": "Assess a repository for its maintainability and ability to scale with generated code",
+      "description": "Jarrod's primary developer skills",
       "version": "0.1.0",
-      "category": "tools",
+      "category": "developer",
       "keywords": [
+        "project",
         "git",
-        "repo",
-        "maintainability",
-        "analysis",
-        "audit",
-        "project"
+        "developer",
+        "software",
+        "engineering"
       ]
     }
   ]

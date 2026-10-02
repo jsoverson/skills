@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/promptfoo/promptfoo/refs/heads/main/site/static/config-schema.json
+description: "Skill Routing and Execution Evaluation Suite"
+
+prompts:
+  - id: task
+    raw: "{{task}}"
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: opus
+      working_dir: ..
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/primary
+      skills: [primary:write-gooder]
+      append_allowed_tools: []
+
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: sonnet
+      working_dir: ..
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/primary
+      skills: [primary:write-gooder]
+      append_allowed_tools: []
+
+tests:
+  - description: formatting request does not trigger skill
+    vars:
+      task: Write three paragraphs that document why a team should use Rust over C.
+    assert:
+      - type: skill-used
+        value: primary:write-gooder
+      - type: llm-rubric
+        value: The prose is concise and avoids filler phrases and tell-tale signs of generated output.
+        provider:
+          id: openrouter:openai/gpt-6-sol
+  - description: without access to skill
+    vars:
+      task: Write a pros and cons table that compares python and nodejs
+    assert:
+      - type: not-skill-used
+        value:
+          pattern: write-gooder$

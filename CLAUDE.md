@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-This repository contains Jarrod's personal Claude plugin development workspace: plans, specs, requirements, example plugins, and skills under development. The primary example is the Superpowers plugin (`examples/claude-superpowers/`), which serves as a reference implementation and source of reusable skills.
+This repository contains Jarrod's personal Claude plugin development workspace: plans, specs, requirements, example plugins, and skills under development.
 
-New skills being developed for personal use live in `skills/`. Completed skills are symlinked into `~/.claude/skills/` for live testing.
+New skills being developed for personal use live in `plugins/wip/`. Completed skills are in `plugins/primary/`.
 
 ## Engineering Philosophy
 

@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/promptfoo/promptfoo/refs/heads/main/site/static/config-schema.json
+description: "Skill Routing and Execution Evaluation Suite"
+
+prompts:
+  - id: task
+    raw: "{{task}}"
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: opus
+      working_dir: ..
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/primary
+      skills: [primary:code-comments]
+      append_allowed_tools: []
+
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: sonnet
+      working_dir: ..
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/primary
+      skills: [primary:code-comments]
+      append_allowed_tools: []
+
+tests:
+  - description: formatting request does not trigger skill
+    vars:
+      task: Write an example node.js argument parser with inline comments
+    assert:
+      - type: skill-used
+        value: primary:code-comments
+      - type: llm-rubric
+        value: The source code contains terse comments that adhere to the code-comments skill
+        provider:
+          id: openrouter:openai/gpt-6-sol
+  - description: without access to skill
+    vars:
+      task: Write a pros and cons table that compares python and nodejs
+    assert:
+      - type: not-skill-used
+        value:
+          pattern: code-comments$

@@ -1,0 +1,7 @@
+
+
+[tasks.eval]
+run = "cd evals && npx promptfoo eval -c skills.yaml"
+
+[tasks."eval:view"]
+run = "cd evals && npx promptfoo view -y"

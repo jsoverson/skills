@@ -1,0 +1,21 @@
+{
+  "name": "agent-skill-testing-suite",
+  "version": "1.0.0",
+  "description": "A production-grade template for unit testing and evaluating AI coding skills (Claude Code, Pi, Codex).",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "promptfoo": "^0.123.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3"
+  }
+}
