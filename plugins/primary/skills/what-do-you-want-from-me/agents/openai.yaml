@@ -1,0 +1,5 @@
+interface:
+  display_name: "What do you want from me?"
+  short_description: "Summarize what is being asked"
+policy:
+  allow_implicit_invocation: false
