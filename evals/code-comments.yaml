@@ -14,8 +14,8 @@ providers:
       setting_sources: [project]
       plugins:
         - type: local
-          path: ../plugins/primary
-      skills: [primary:code-comments]
+          path: ../plugins/engineering
+      skills: [engineering:code-comments]
       append_allowed_tools: []
 
   - id: anthropic:claude-agent-sdk
@@ -26,8 +26,8 @@ providers:
       setting_sources: [project]
       plugins:
         - type: local
-          path: ../plugins/primary
-      skills: [primary:code-comments]
+          path: ../plugins/engineering
+      skills: [engineering:code-comments]
       append_allowed_tools: []
 
 tests:
@@ -36,7 +36,7 @@ tests:
       task: Write an example node.js argument parser with inline comments
     assert:
       - type: skill-used
-        value: primary:code-comments
+        value: engineering:code-comments
       - type: llm-rubric
         value: The source code contains terse comments that adhere to the code-comments skill
         provider:

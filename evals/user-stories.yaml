@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/promptfoo/promptfoo/refs/heads/main/site/static/config-schema.json
+description: "User stories skill behavior"
+
+prompts:
+  - id: task
+    raw: "{{task}}"
+
+defaultTest:
+  options:
+    provider:
+      id: anthropic:claude-agent-sdk
+      config:
+        apiKeyRequired: false
+        model: sonnet
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: sonnet
+      working_dir: ..
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/engineering
+      skills: [engineering:user-stories]
+      append_allowed_tools: []
+
+tests:
+  - description: a named solution leads to asking why
+    vars:
+      task: "Use the user-stories skill. In our video player app, I've decided we need a pause button. Record that as a user story for the viewer persona."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response asks what the user wants the pause button for, or why they want it, and does not present a finished story whose outcome is having a pause button.
+  - description: a so-that that repeats the want is rejected
+    vars:
+      task: "Use the user-stories skill. Is this story good enough to record? 'As a viewer, I want to resume a video where I stopped, so that the video resumes where I stopped.'"
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response says the so-that clause repeats the want, and does not accept the story as written.
+  - description: a story inferred from code is proposed, not written
+    vars:
+      task: "Use the user-stories skill. I noticed this while reading the code: playback position is deleted when a user logs out. docs/user-stories/viewer.md exists. Add whatever story this implies."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response treats the story as inferred from code, proposes wording or asks whether anyone wants this behavior, and asks for confirmation before writing. It does not claim to have written the story to a file.
+  - description: a fourth persona is folded into an existing one
+    vars:
+      task: "Use the user-stories skill. We have three personas: viewer, creator, and moderator. Create a fourth persona file, binge-watcher, for this: binge-watchers want the next episode to start by itself so they can keep watching without touching the remote."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response pushes back on a new persona and offers a story under the viewer persona, with the binge-watching variation in the role phrase, such as "As a viewer who binge-watches".
+  - description: a statement only one architecture satisfies goes to an adr
+    vars:
+      task: "Use the user-stories skill. Record this as a user story: playback events must be event-sourced into Kafka and projected into Postgres."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response says this is an architecture decision, not a user story, and directs it toward an ADR or asks what the user wants from it. It does not record it as a story.
+  - description: a clean stated want becomes a classic-form story
+    vars:
+      task: "Use the user-stories skill and show me the bullet you would write. Our viewers told us, and I agree: if they leave a video and come back on a different device, they want to pick up where they stopped, because they watch on a phone during a commute and on a TV at home."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+      - type: llm-rubric
+        value: The response includes one bullet in the form "As a viewer..., I want ..., so that ...", names no technology or mechanism, and has a so-that clause that adds a reason beyond the want.

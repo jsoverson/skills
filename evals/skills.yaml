@@ -16,7 +16,9 @@ providers:
       plugins:
         - type: local
           path: ../plugins/primary
-      skills: [primary:code-comments, primary:write-gooder]
+        - type: local
+          path: ../plugins/engineering
+      skills: [engineering:code-comments, primary:write-gooder, engineering:user-stories]
       append_allowed_tools: []
 
   - id: anthropic:claude-agent-sdk
@@ -29,7 +31,9 @@ providers:
       plugins:
         - type: local
           path: ../plugins/primary
-      skills: [primary:code-comments, primary:write-gooder]
+        - type: local
+          path: ../plugins/engineering
+      skills: [engineering:code-comments, primary:write-gooder, engineering:user-stories]
       append_allowed_tools: []
 
 tests:
@@ -38,7 +42,7 @@ tests:
       task: Write an example node.js argument parser with inline comments
     assert:
       - type: skill-used
-        value: primary:code-comments
+        value: engineering:code-comments
       - type: llm-rubric
         value: The source code contains terse comments that adhere to the code-comments skill
         provider:
@@ -68,3 +72,18 @@ tests:
       - type: not-skill-used
         value:
           pattern: write-gooder$
+
+  - description: a decision about what users want triggers user-stories
+    vars:
+      task: "We just decided that viewers must be able to pick up a video on any device where they stopped, because they switch between a phone and a TV. Record that in docs/user-stories/."
+    assert:
+      - type: skill-used
+        value: engineering:user-stories
+
+  - description: a code question does not trigger user-stories
+    vars:
+      task: Write an example node.js function that sums a list of numbers
+    assert:
+      - type: not-skill-used
+        value:
+          pattern: user-stories$
