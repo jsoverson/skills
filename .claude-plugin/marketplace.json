@@ -24,6 +24,20 @@
         "software",
         "engineering"
       ]
+    },
+    {
+      "name": "engineering",
+      "source": "./plugins/engineering",
+      "strict": true,
+      "description": "Engineering workflow skills, forked from mattpocock/skills",
+      "version": "0.1.0",
+      "category": "developer",
+      "keywords": [
+        "domain-modeling",
+        "user-stories",
+        "grilling",
+        "engineering"
+      ]
     }
   ]
 }
