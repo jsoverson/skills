@@ -67,7 +67,7 @@ When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up:
 
 Only offer to create an ADR when all five are true:
 
-1. **Architecture**: another architecture couldn't satisfy the same statement. If it could, it's a product requirement: record it with the project's requirements, not as an ADR
+1. **Architecture**: another architecture couldn't satisfy the same statement. If it could, it's a product requirement: record it as a user story (call the Skill tool with "user-stories"), not as an ADR
 2. **Built**: code depends on it today. If nothing does yet, it's direction: record it in the project's plan
 3. **Hard to reverse**: the cost of changing your mind later is meaningful
 4. **Surprising without context**: a future reader will wonder "why did they do it this way?"

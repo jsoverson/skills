@@ -34,7 +34,7 @@ An ADR states the current decision. When a decision changes, edit its ADR in pla
 
 All five of these must be true:
 
-1. **Architecture**: another architecture couldn't satisfy the same statement. "A sentient can satisfy its desires and still die of an unmet need" is a product requirement, because many designs could deliver it. "Opinion is derived from memories and never stored" is architecture
+1. **Architecture**: another architecture couldn't satisfy the same statement. "A sentient can satisfy its desires and still die of an unmet need" is a product requirement, because many designs could deliver it, and belongs in a user story. "Opinion is derived from memories and never stored" is architecture
 2. **Built**: code depends on it today. An intention for unbuilt work is direction, and goes in the project's plan
 3. **Hard to reverse**: the cost of changing your mind later is meaningful
 4. **Surprising without context**: a future reader will look at the code and wonder "why on earth did they do it this way?"
