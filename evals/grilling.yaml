@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/promptfoo/promptfoo/refs/heads/main/site/static/config-schema.json
+# Run with `mise run eval:grilling`, which resets .work/grilling as its own git repo first.
+# Cases share one work dir, so they run one at a time.
+description: "Grilling skill behavior"
+
+prompts:
+  - id: task
+    raw: "{{task}}"
+
+evaluateOptions:
+  maxConcurrency: 1
+
+defaultTest:
+  options:
+    provider:
+      id: anthropic:claude-agent-sdk
+      config:
+        apiKeyRequired: false
+        model: sonnet
+
+providers:
+  - id: anthropic:claude-agent-sdk
+    config:
+      apiKeyRequired: false
+      model: sonnet
+      working_dir: .work/grilling
+      setting_sources: [project]
+      plugins:
+        - type: local
+          path: ../plugins/engineering
+      skills: [engineering:grilling]
+      append_allowed_tools: [Write, Edit, Bash]
+
+tests:
+  # Structure: automated.
+  - description: a first round is a valid session file and a terse reply
+    vars:
+      task: "Use the grilling skill. Grill me on this plan: add rate limiting to our public REST API, per API key, returning 429 when exceeded."
+    assert:
+      - type: skill-used
+        value: engineering:grilling
+      - type: javascript
+        value: file://assertions/grilling.cjs:newSessionValid
+      - type: llm-rubric
+        value: The response gives a .toml file path under docs/questioning, a count of questions, and a command that runs review.nu on that file. It does not list the questions or recommendations in the reply.
+
+  # Parsing: automated. The work dir holds the fixture, answered through round 1.
+  - description: done on an answered round keeps answers and re-asks reask questions
+    vars:
+      task: "Use the grilling skill. I'm done answering round 1 of docs/questioning/cache-layer.toml. Write round 2."
+    assert:
+      - type: skill-used
+        value: engineering:grilling
+      - type: javascript
+        value: file://assertions/grilling.cjs:fixtureRound2
+
+  # Content: manual. Read the generated file in the assertion reason in `promptfoo view`.
+  - description: "content: schema migration"
+    vars:
+      task: "Use the grilling skill. Grill me on this plan: split the users table's `name` column into `first_name` and `last_name` in Postgres, with zero downtime, for a table with 40 million rows."
+    assert:
+      - type: javascript
+        value: file://assertions/grilling.cjs:showSession
+
+  - description: "content: cli design"
+    vars:
+      task: "Use the grilling skill. Grill me on this plan: a CLI called `envy` that syncs .env files between developers through an encrypted git branch."
+    assert:
+      - type: javascript
+        value: file://assertions/grilling.cjs:showSession
+
+  - description: "content: vague product idea"
+    vars:
+      task: "Use the grilling skill. Grill me on this idea: an app that helps people eat better."
+    assert:
+      - type: javascript
+        value: file://assertions/grilling.cjs:showSession

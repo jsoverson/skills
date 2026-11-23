@@ -5,3 +5,13 @@ run = "cd evals && npx promptfoo eval -c skills.yaml"
 
 [tasks."eval:view"]
 run = "cd evals && npx promptfoo view -y"
+
+[tasks."eval:grilling"]
+run = """
+rm -rf evals/.work/grilling
+mkdir -p evals/.work/grilling/docs/questioning
+cp plugins/engineering/skills/grilling/scripts/fixtures/answered.toml evals/.work/grilling/docs/questioning/cache-layer.toml
+# its own repo, so the agent treats the work dir as the project root
+git -C evals/.work/grilling init -q
+cd evals && npx promptfoo eval -c grilling.yaml
+"""

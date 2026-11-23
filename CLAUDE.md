@@ -30,6 +30,8 @@ Evals use promptfoo, one config per skill in `evals/`, with routing cases in `ev
 ```bash
 mise run eval                                  # skills.yaml
 cd evals && npx promptfoo eval -c <file>.yaml  # one config
+mise run eval:grilling                         # grilling.yaml, after resetting evals/.work/grilling
+nu plugins/engineering/skills/grilling/scripts/test.nu  # grilling script tests
 ```
 
 ## Repo Structure

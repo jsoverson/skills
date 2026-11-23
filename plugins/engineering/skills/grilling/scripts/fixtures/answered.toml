@@ -1,0 +1,77 @@
+# fixture: a session after the user answered round 1
+topic = "Cache layer"
+goal = "Decide how the API caches responses."
+
+[round.1]
+decides = "cache store and invalidation"
+
+[Q1]
+round = 1
+title = "Use Redis as the cache store?"
+body = '''
+The API runs on three nodes.
+An in-process cache would diverge between them.
+'''
+recommended = "a"
+recs.a = "Redis"
+recs.b = "In-process LRU"
+choice = "a"
+note = ""
+
+[Q2]
+round = 1
+title = "Invalidate on write?"
+body = '''
+Writes go through `src/api/write.ts`.
+'''
+recommended = "a"
+recs.a = "Delete the key on write"
+choice = "a"
+note = "but only for user records"
+
+[Q3]
+round = 1
+title = "TTL for list endpoints?"
+body = "List endpoints change often."
+recommended = "b"
+recs.a = "30s"
+recs.b = "5m"
+choice = ""
+note = "no TTL; lists are not cached"
+
+[Q4]
+round = 1
+title = "Cache warm-up on deploy?"
+body = "Cold starts cost about 2s."
+recommended = "a"
+recs.a = "Warm the top 100 keys"
+choice = "superseded"
+note = ""
+
+[Q5]
+round = 1
+title = "Shard keys by tenant?"
+body = "Twelve tenants today."
+recommended = "a"
+recs.a = "Prefix keys with the tenant id"
+choice = "reask"
+note = "unclear what sharding means here"
+
+[Q6]
+round = 1
+title = "Compress cached values?"
+body = "Values average 4KB."
+recommended = "a"
+recs.a = "gzip above 1KB"
+choice = ""
+note = ""
+
+[Q7]
+round = 1
+title = "Separate TTL for admin lists?"
+body = "Admin lists are large."
+recommended = "a"
+recs.a = "10m"
+choice = ""
+note = ""
+dropped = "Q3: lists are not cached"
